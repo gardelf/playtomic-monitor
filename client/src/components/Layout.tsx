@@ -3,8 +3,6 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard,
-  Activity,
-  Bell,
   Settings,
   Menu,
   X,
@@ -23,8 +21,6 @@ const navItems = [
   { href: "/courts", label: "Pistas", icon: Grid3X3 },
   { href: "/contacts", label: "Contactos", icon: Users },
   { href: "/activity", label: "Actividad", icon: ClipboardList },
-  { href: "/monitor", label: "Cursos", icon: Activity },
-  { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
 

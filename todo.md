@@ -75,3 +75,9 @@
 - [ ] Frontend: página Actividad con historial de ejecuciones, badges de estado, estadísticas
 - [ ] Sidebar: enlace a Actividad
 - [ ] Tests y checkpoint
+
+## Limpieza: eliminar módulo de Cursos
+- [x] Eliminar enlace "Cursos" del sidebar
+- [x] Eliminar enlace "Alertas" del sidebar (solo relevante para cursos)
+- [x] Eliminar ruta /monitor del App.tsx
+- [x] Simplificar Dashboard eliminando métricas de cursos
