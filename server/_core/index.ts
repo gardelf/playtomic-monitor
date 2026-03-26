@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { autoStartCourtSchedulerIfNeeded } from "../courtMonitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -59,6 +60,10 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Auto-reiniciar el scheduler de pistas si estaba activo antes del reinicio
+    setTimeout(() => {
+      autoStartCourtSchedulerIfNeeded().catch(console.error);
+    }, 3000); // Esperar 3s para que la DB esté lista
   });
 }
 

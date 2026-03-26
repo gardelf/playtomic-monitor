@@ -7,6 +7,13 @@ vi.mock("axios", () => ({
 vi.mock("./db", () => ({
   getAlertConfig: vi.fn(),
   insertAlert: vi.fn(),
+  getActiveTelegramContacts: vi.fn().mockResolvedValue([]),
+  incrementContactAlerts: vi.fn(),
+  createMonitorRun: vi.fn().mockResolvedValue(1),
+  finishMonitorRun: vi.fn(),
+  getCourtSchedulerState: vi.fn().mockResolvedValue({ isRunning: false, intervalMinutes: 5 }),
+  persistSchedulerStart: vi.fn().mockResolvedValue(undefined),
+  persistSchedulerStop: vi.fn().mockResolvedValue(undefined),
 }));
 
 import axios from "axios";

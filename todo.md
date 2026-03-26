@@ -81,3 +81,10 @@
 - [x] Eliminar enlace "Alertas" del sidebar (solo relevante para cursos)
 - [x] Eliminar ruta /monitor del App.tsx
 - [x] Simplificar Dashboard eliminando métricas de cursos
+
+## Bug: Monitor deja de ejecutarse
+- [x] Diagnosticar: scheduler en memoria se pierde al reiniciar el servidor (hot-reload)
+- [x] Corregir: persistir estado del scheduler en tabla court_scheduler_state
+- [x] Auto-arranque al iniciar el servidor si estaba activo antes del reinicio
+- [x] Tests: 31/31 passing
+- [x] Checkpoint

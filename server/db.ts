@@ -14,6 +14,7 @@ import {
   alertConfigs,
   alertHistory,
   courseSnapshots,
+  courtSchedulerState,
   monitorSettings,
   monitoredClubs,
   monitoredCourses,
@@ -461,4 +462,42 @@ export async function getMonitorRunStats(): Promise<{
     lastRunAt: rows[0]?.startedAt ?? null,
     successRate: finished.length > 0 ? Math.round((ok / finished.length) * 100) : 0,
   };
+}
+
+// ─── Court Scheduler State (persistencia en DB) ───────────────────────────────
+
+/** Obtiene o crea el registro singleton del estado del scheduler de pistas */
+export async function getCourtSchedulerState() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(courtSchedulerState).limit(1);
+  if (rows.length > 0) return rows[0]!;
+  // Crear el singleton si no existe
+  await db.insert(courtSchedulerState).values({ isRunning: false, intervalMinutes: 5 });
+  const created = await db.select().from(courtSchedulerState).limit(1);
+  return created[0] ?? null;
+}
+
+/** Persiste en DB que el scheduler ha arrancado */
+export async function persistSchedulerStart(intervalMinutes: number) {
+  const db = await getDb();
+  if (!db) return;
+  const state = await getCourtSchedulerState();
+  if (!state) return;
+  await db
+    .update(courtSchedulerState)
+    .set({ isRunning: true, intervalMinutes, startedAt: new Date(), stoppedAt: null })
+    .where(eq(courtSchedulerState.id, state.id));
+}
+
+/** Persiste en DB que el scheduler se ha detenido */
+export async function persistSchedulerStop() {
+  const db = await getDb();
+  if (!db) return;
+  const state = await getCourtSchedulerState();
+  if (!state) return;
+  await db
+    .update(courtSchedulerState)
+    .set({ isRunning: false, stoppedAt: new Date() })
+    .where(eq(courtSchedulerState.id, state.id));
 }

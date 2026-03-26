@@ -202,6 +202,18 @@ export const telegramContacts = mysqlTable("telegram_contacts", {
 });
 
 export type TelegramContact = typeof telegramContacts.$inferSelect;
+
+/** Estado persistente del scheduler de pistas (singleton, id=1) */
+export const courtSchedulerState = mysqlTable("court_scheduler_state", {
+  id: int("id").autoincrement().primaryKey(),
+  isRunning: boolean("isRunning").default(false).notNull(),
+  intervalMinutes: int("intervalMinutes").default(5).notNull(),
+  startedAt: timestamp("startedAt"),
+  stoppedAt: timestamp("stoppedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CourtSchedulerState = typeof courtSchedulerState.$inferSelect;
 export type InsertTelegramContact = typeof telegramContacts.$inferInsert;
 
 /** Registro de cada ciclo de ejecución del monitor de pistas */

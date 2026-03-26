@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS court_scheduler_state (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  isRunning BOOLEAN NOT NULL DEFAULT FALSE,\n  intervalMinutes INT NOT NULL DEFAULT 5,\n  startedAt TIMESTAMP NULL,\n  stoppedAt TIMESTAMP NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\nINSERT IGNORE INTO court_scheduler_state (id, isRunning, intervalMinutes) VALUES (1, FALSE, 5);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute CREATE TABLE IF NOT EXISTS court_scheduler_state (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  isRunning BOOLEAN NOT NULL DEFAULT FALSE,\n  intervalMinutes INT NOT NULL DEFAULT 5,\n  startedAt TIMESTAMP NULL,\n  stoppedAt TIMESTAMP NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\nINSERT IGNORE INTO court_scheduler_state (id, isRunning, intervalMinutes) VALUES (1, FALSE, 5);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 123
+}

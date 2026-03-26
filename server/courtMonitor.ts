@@ -19,8 +19,11 @@ import {
   finishMonitorRun,
   getActiveTelegramContacts,
   getAlertConfig,
+  getCourtSchedulerState,
   incrementContactAlerts,
   insertAlert,
+  persistSchedulerStart,
+  persistSchedulerStop,
 } from "./db";
 
 const PLAYTOMIC_API = "https://api.playtomic.io/v1";
@@ -552,6 +555,8 @@ export function startCourtScheduler(intervalMinutes = 5): void {
   _courtSchedulerIntervalMinutes = intervalMinutes;
   const ms = intervalMinutes * 60 * 1000;
   console.log(`[CourtMonitor] Scheduler started: every ${intervalMinutes} minutes`);
+  // Persistir en DB para sobrevivir reinicios
+  persistSchedulerStart(intervalMinutes).catch(console.error);
   _courtSchedulerInterval = setInterval(async () => {
     try {
       await runCourtMonitorCycle("scheduler");
@@ -566,6 +571,7 @@ export function stopCourtScheduler(): void {
     clearInterval(_courtSchedulerInterval);
     _courtSchedulerInterval = null;
     console.log("[CourtMonitor] Scheduler stopped");
+    persistSchedulerStop().catch(console.error);
   }
 }
 
@@ -575,4 +581,20 @@ export function isCourtSchedulerRunning(): boolean {
 
 export function getCourtSchedulerIntervalMinutes(): number {
   return _courtSchedulerIntervalMinutes;
+}
+
+/**
+ * Auto-arranque al iniciar el servidor: si el scheduler estaba activo
+ * antes del reinicio, lo reactiva automáticamente.
+ */
+export async function autoStartCourtSchedulerIfNeeded(): Promise<void> {
+  try {
+    const state = await getCourtSchedulerState();
+    if (state?.isRunning && !isCourtSchedulerRunning()) {
+      console.log(`[CourtMonitor] Auto-restarting scheduler (was running before restart, interval: ${state.intervalMinutes}min)`);
+      startCourtScheduler(state.intervalMinutes);
+    }
+  } catch (err) {
+    console.error("[CourtMonitor] Auto-start check failed:", err);
+  }
 }
