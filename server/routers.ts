@@ -24,16 +24,24 @@ import {
   deleteCourtWatchConfig,
   fetchCourtAvailability,
   fetchCourtResources,
+  getCourtSchedulerIntervalMinutes,
   getCourtWatchConfigs,
   getLatestCourtAvailability,
   getRecentCourtSnapshots,
   getUpcomingDates,
   isCourtSchedulerRunning,
   runCourtMonitorCycle,
+  sendTelegramTestMessage,
   startCourtScheduler,
   stopCourtScheduler,
   updateCourtWatchConfig,
 } from "./courtMonitor";
+import {
+  createTelegramContact,
+  deleteTelegramContact,
+  getAllTelegramContacts,
+  updateTelegramContact,
+} from "./db";
 
 // ─── Club Router ──────────────────────────────────────────────────────────────
 
@@ -326,6 +334,52 @@ const courtsRouter = router({
   upcomingDates: publicProcedure
     .input(z.object({ dayOfWeek: z.number().min(0).max(6), weeksAhead: z.number().min(1).max(12) }))
     .query(({ input }) => getUpcomingDates(input.dayOfWeek, input.weeksAhead)),
+
+  /** Estado del scheduler con intervalo */
+  schedulerStatusFull: publicProcedure.query(() => ({
+    running: isCourtSchedulerRunning(),
+    intervalMinutes: getCourtSchedulerIntervalMinutes(),
+  })),
+});
+
+// ─── Telegram Contacts Router ─────────────────────────────────────────────────
+
+const telegramContactsRouter = router({
+  list: publicProcedure.query(() => getAllTelegramContacts()),
+
+  create: publicProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(128),
+        chatId: z.string().min(1).max(64),
+        notes: z.string().optional(),
+        isActive: z.boolean().default(true),
+      })
+    )
+    .mutation(({ input }) => createTelegramContact(input)),
+
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().min(1).max(128).optional(),
+        chatId: z.string().min(1).max(64).optional(),
+        notes: z.string().nullable().optional(),
+        isActive: z.boolean().optional(),
+      })
+    )
+    .mutation(({ input }) => {
+      const { id, ...data } = input;
+      return updateTelegramContact(id, data);
+    }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(({ input }) => deleteTelegramContact(input.id)),
+
+  testMessage: publicProcedure
+    .input(z.object({ chatId: z.string() }))
+    .mutation(({ input }) => sendTelegramTestMessage(input.chatId)),
 });
 
 // ─── App Router ───────────────────────────────────────────────────────────────
@@ -345,6 +399,7 @@ export const appRouter = router({
   alerts: alertsRouter,
   monitor: monitorRouter,
   courts: courtsRouter,
+  telegramContacts: telegramContactsRouter,
 });
 
 export type AppRouter = typeof appRouter;

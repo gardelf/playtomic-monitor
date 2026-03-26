@@ -181,3 +181,25 @@ export const courtAvailabilitySnapshots = mysqlTable("court_availability_snapsho
 });
 
 export type CourtAvailabilitySnapshot = typeof courtAvailabilitySnapshots.$inferSelect;
+
+/** Contactos de Telegram a los que enviar alertas */
+export const telegramContacts = mysqlTable("telegram_contacts", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Nombre del contacto (para mostrar en la app) */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** Chat ID de Telegram (puede ser usuario o grupo, ej: 123456789 o -987654321) */
+  chatId: varchar("chatId", { length: 64 }).notNull().unique(),
+  /** Si este contacto recibe alertas */
+  isActive: boolean("isActive").default(true).notNull(),
+  /** Notas opcionales (ej: 'Grupo de pádel miércoles') */
+  notes: text("notes"),
+  /** Última vez que se le envió una alerta */
+  lastAlertAt: timestamp("lastAlertAt"),
+  /** Total de alertas enviadas a este contacto */
+  totalAlerts: int("totalAlerts").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TelegramContact = typeof telegramContacts.$inferSelect;
+export type InsertTelegramContact = typeof telegramContacts.$inferInsert;

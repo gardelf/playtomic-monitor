@@ -55,3 +55,14 @@
 - [x] Selector de calendario (hasta 2 días) en lugar del panel fijo de miércoles
 - [x] Mostrar disponibilidad de los 2 días seleccionados en paralelo
 - [x] Persistir la selección en localStorage para no perderla al recargar
+
+## Rediseño sistema de monitorización y alertas
+- [x] DB: tabla telegram_contacts (id, name, chat_id, isActive, notes)
+- [x] Motor: polling cada 5 min, detectar primera aparición de slots (apertura del día)
+- [x] Motor: generar enlace directo a Playtomic por club/fecha
+- [x] Motor: enviar alerta a TODOS los contactos Telegram activos cuando se detecta apertura
+- [x] Página Contactos: lista gestionable con nombre, chat_id, activar/desactivar, test de mensaje
+- [x] Alertas Telegram: mensaje enriquecido con pistas disponibles + enlace directo
+- [x] Sidebar: enlace a Contactos
+- [x] Tests: 31 tests passing
+- [x] Checkpoint

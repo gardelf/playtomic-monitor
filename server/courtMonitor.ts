@@ -1,10 +1,12 @@
 /**
  * Motor de monitorización de disponibilidad de PISTAS de Playtomic
- * Consulta /v1/availability y /v1/tenants/{id}/resources
+ * - Consulta /v1/availability cada 5 minutos
+ * - Detecta la primera apertura del día (slots que no existían antes)
+ * - Envía alertas a TODOS los contactos Telegram activos con enlace directo
  */
 
 import axios from "axios";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   CourtWatchConfig,
@@ -12,7 +14,12 @@ import {
   courtWatchConfigs,
   InsertCourtWatchConfig,
 } from "../drizzle/schema";
-import { getAlertConfig, insertAlert } from "./db";
+import {
+  getActiveTelegramContacts,
+  getAlertConfig,
+  incrementContactAlerts,
+  insertAlert,
+} from "./db";
 
 const PLAYTOMIC_API = "https://api.playtomic.io/v1";
 const HEADERS = {
@@ -46,6 +53,28 @@ interface PlaytomicResource {
     resource_size?: string;
     resource_feature?: string;
   };
+}
+
+export interface CourtSlotResult {
+  date: string;
+  time: string;
+  duration: number;
+  courtName: string;
+  resourceId: string;
+  courtType?: string;
+  courtFeature?: string;
+  price: string;
+  isNew: boolean;
+}
+
+// ─── Playtomic URL builder ────────────────────────────────────────────────────
+
+/**
+ * Genera el enlace directo a la página de reservas de Playtomic para un club y fecha.
+ * Formato: https://playtomic.io/clubs/{tenantUid}?date=YYYY-MM-DD
+ */
+export function buildPlaytomicBookingUrl(tenantUid: string, dateStr: string): string {
+  return `https://playtomic.io/clubs/${tenantUid}?date=${dateStr}`;
 }
 
 // ─── API Fetchers ─────────────────────────────────────────────────────────────
@@ -99,7 +128,6 @@ export function getUpcomingDates(dayOfWeek: number, weeksAhead: number): string[
 
   for (let w = 0; w < weeksAhead; w++) {
     const d = new Date(today);
-    // JS getDay(): 0=Sun, 1=Mon, ..., 6=Sat
     let diff = dayOfWeek - d.getDay();
     if (diff <= 0) diff += 7;
     d.setDate(d.getDate() + diff + w * 7);
@@ -109,9 +137,12 @@ export function getUpcomingDates(dayOfWeek: number, weeksAhead: number): string[
     dates.push(`${yyyy}-${mm}-${dd}`);
   }
 
-  // Deduplicate
   const seen = new Set<string>();
-  return dates.filter((d) => { if (seen.has(d)) return false; seen.add(d); return true; });
+  return dates.filter((d) => {
+    if (seen.has(d)) return false;
+    seen.add(d);
+    return true;
+  });
 }
 
 // ─── DB Helpers ───────────────────────────────────────────────────────────────
@@ -173,7 +204,6 @@ export async function getRecentCourtSnapshots(watchConfigId: number, limit = 30)
 export async function getLatestCourtAvailability(watchConfigId: number) {
   const db = await getDb();
   if (!db) return [];
-  // Get the most recent check time
   const latest = await db
     .select()
     .from(courtAvailabilitySnapshots)
@@ -183,44 +213,81 @@ export async function getLatestCourtAvailability(watchConfigId: number) {
 
   if (!latest[0]) return [];
 
-  const latestTime = latest[0].checkedAt;
-  // Get all snapshots from the same check cycle (within 60 seconds)
-  const cutoff = new Date(latestTime.getTime() - 60000);
-
   return db
     .select()
     .from(courtAvailabilitySnapshots)
-    .where(
-      and(
-        eq(courtAvailabilitySnapshots.watchConfigId, watchConfigId),
-        // checkedAt >= cutoff — use raw comparison
-      )
-    )
+    .where(eq(courtAvailabilitySnapshots.watchConfigId, watchConfigId))
     .orderBy(courtAvailabilitySnapshots.slotDate, courtAvailabilitySnapshots.slotTime)
     .limit(100);
 }
 
 // ─── Alert Senders ────────────────────────────────────────────────────────────
 
-async function sendCourtTelegramAlert(message: string): Promise<boolean> {
+/**
+ * Envía un mensaje Telegram a UN contacto específico.
+ */
+async function sendTelegramToContact(
+  botToken: string,
+  chatId: string,
+  message: string
+): Promise<boolean> {
   try {
-    const config = await getAlertConfig("telegram");
-    if (!config?.isEnabled) return false;
-    const { botToken, chatId } = JSON.parse(config.config || "{}") as {
-      botToken?: string;
-      chatId?: string;
-    };
-    if (!botToken || !chatId) return false;
-
     await axios.post(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
-      { chat_id: chatId, text: message, parse_mode: "HTML" },
+      { chat_id: chatId, text: message, parse_mode: "HTML", disable_web_page_preview: false },
       { timeout: 10000 }
     );
     return true;
   } catch (err) {
-    console.error("[CourtMonitor] Telegram error:", err instanceof Error ? err.message : err);
+    console.error(`[CourtMonitor] Telegram error for chatId ${chatId}:`, err instanceof Error ? err.message : err);
     return false;
+  }
+}
+
+/**
+ * Envía una alerta a TODOS los contactos Telegram activos.
+ * Retorna el número de envíos exitosos.
+ */
+export async function sendTelegramAlertToAll(message: string): Promise<number> {
+  const config = await getAlertConfig("telegram");
+  if (!config?.isEnabled) return 0;
+
+  const { botToken } = JSON.parse(config.config || "{}") as { botToken?: string };
+  if (!botToken) return 0;
+
+  const contacts = await getActiveTelegramContacts();
+  if (contacts.length === 0) {
+    console.warn("[CourtMonitor] No active Telegram contacts found");
+    return 0;
+  }
+
+  let sent = 0;
+  for (const contact of contacts) {
+    const ok = await sendTelegramToContact(botToken, contact.chatId, message);
+    if (ok) {
+      sent++;
+      await incrementContactAlerts(contact.id);
+    }
+  }
+  console.log(`[CourtMonitor] Telegram alerts sent to ${sent}/${contacts.length} contacts`);
+  return sent;
+}
+
+/**
+ * Envía un mensaje de prueba a un contacto específico por chatId.
+ */
+export async function sendTelegramTestMessage(chatId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const config = await getAlertConfig("telegram");
+    if (!config?.isEnabled) return { ok: false, error: "Telegram no está habilitado en Configuración" };
+    const { botToken } = JSON.parse(config.config || "{}") as { botToken?: string };
+    if (!botToken) return { ok: false, error: "Bot token no configurado" };
+
+    const msg = `✅ <b>Playtomic Monitor</b>\n\nMensaje de prueba recibido correctamente.\nEste contacto recibirá alertas cuando haya pistas disponibles.`;
+    const ok = await sendTelegramToContact(botToken, chatId, msg);
+    return ok ? { ok: true } : { ok: false, error: "Error al enviar el mensaje. Verifica el Chat ID." };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Error desconocido" };
   }
 }
 
@@ -261,18 +328,6 @@ async function sendCourtEmailAlert(subject: string, body: string): Promise<boole
 
 // ─── Core Monitor Cycle ───────────────────────────────────────────────────────
 
-export interface CourtSlotResult {
-  date: string;
-  time: string;
-  duration: number;
-  courtName: string;
-  resourceId: string;
-  courtType?: string;
-  courtFeature?: string;
-  price: string;
-  isNew: boolean;
-}
-
 export async function runCourtMonitorCycle(): Promise<{
   checked: number;
   slotsFound: number;
@@ -293,7 +348,6 @@ export async function runCourtMonitorCycle(): Promise<{
   const resourceCache: Record<string, Record<string, PlaytomicResource>> = {};
 
   for (const config of configs) {
-    // Get club tenant ID
     const { monitoredClubs } = await import("../drizzle/schema");
     const clubs = await db.select().from(monitoredClubs).where(eq(monitoredClubs.id, config.clubId)).limit(1);
     const club = clubs[0];
@@ -308,7 +362,6 @@ export async function runCourtMonitorCycle(): Promise<{
 
     // Get upcoming dates for this day of week
     const dates = getUpcomingDates(config.dayOfWeek, config.weeksAhead);
-
     const newSlotsForConfig: CourtSlotResult[] = [];
 
     for (const dateStr of dates) {
@@ -321,16 +374,20 @@ export async function runCourtMonitorCycle(): Promise<{
 
         // Filter slots in the time range
         const matchingSlots = courtAvail.slots.filter((slot) => {
-          const time = slot.start_time.substring(0, 5); // HH:MM
+          const time = slot.start_time.substring(0, 5);
           const inRange = time >= config.startTimeMin && time <= config.startTimeMax;
-          const durationOk = !config.preferredDuration || slot.duration === config.preferredDuration;
+          const durationOk =
+            !config.preferredDuration || slot.duration === config.preferredDuration;
           return inRange && durationOk;
         });
 
         for (const slot of matchingSlots) {
           totalSlotsFound++;
 
-          // Check if this slot was already seen recently (same date+time+court in last 24h)
+          // Check if this exact slot was already seen today (same date+time+court)
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+
           const existing = await db
             .select()
             .from(courtAvailabilitySnapshots)
@@ -340,7 +397,8 @@ export async function runCourtMonitorCycle(): Promise<{
                 eq(courtAvailabilitySnapshots.slotDate, dateStr),
                 eq(courtAvailabilitySnapshots.slotTime, slot.start_time.substring(0, 5)),
                 eq(courtAvailabilitySnapshots.resourceId, courtAvail.resource_id),
-                eq(courtAvailabilitySnapshots.duration, slot.duration)
+                eq(courtAvailabilitySnapshots.duration, slot.duration),
+                gte(courtAvailabilitySnapshots.checkedAt, todayStart)
               )
             )
             .limit(1);
@@ -384,32 +442,51 @@ export async function runCourtMonitorCycle(): Promise<{
       const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
       const dayName = dayNames[config.dayOfWeek] ?? "día";
 
-      let tgMsg = `🎾 <b>¡Pistas disponibles en ${club.name}!</b>\n`;
-      tgMsg += `📅 <b>Vigilancia:</b> ${config.name}\n`;
-      tgMsg += `📆 <b>Día:</b> ${dayName} ${config.startTimeMin}-${config.startTimeMax}\n\n`;
-      tgMsg += `<b>Slots encontrados (${newSlotsForConfig.length}):</b>\n`;
-      for (const slot of newSlotsForConfig.slice(0, 10)) {
-        const typeIcon = slot.courtType === "indoor" ? "🏠" : "☀️";
-        tgMsg += `${typeIcon} <b>${slot.courtName}</b> · ${slot.date} ${slot.time} · ${slot.duration}min · ${slot.price}\n`;
+      // Group new slots by date for cleaner message
+      const byDate = new Map<string, CourtSlotResult[]>();
+      for (const slot of newSlotsForConfig) {
+        if (!byDate.has(slot.date)) byDate.set(slot.date, []);
+        byDate.get(slot.date)!.push(slot);
       }
-      if (newSlotsForConfig.length > 10) {
-        tgMsg += `...y ${newSlotsForConfig.length - 10} más\n`;
+
+      let tgMsg = `🎾 <b>¡Pistas disponibles en ${club.name}!</b>\n\n`;
+      tgMsg += `📋 <b>${config.name}</b> · ${dayName} ${config.startTimeMin}–${config.startTimeMax}\n`;
+      tgMsg += `🆕 <b>${newSlotsForConfig.length} slot${newSlotsForConfig.length !== 1 ? "s" : ""} nuevos</b>\n\n`;
+
+      for (const [date, slots] of Array.from(byDate.entries())) {
+        const [y, m, d] = date.split("-");
+        const dateObj = new Date(parseInt(y!), parseInt(m!) - 1, parseInt(d!));
+        const dateLabel = dateObj.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+        tgMsg += `📅 <b>${dateLabel}</b>\n`;
+
+        for (const slot of slots.slice(0, 8)) {
+          const typeIcon = slot.courtType === "indoor" ? "🏠" : "☀️";
+          const priceClean = slot.price.replace(" EUR", "€");
+          tgMsg += `${typeIcon} ${slot.courtName} · <b>${slot.time}</b> · ${slot.duration}min · ${priceClean}\n`;
+        }
+        if (slots.length > 8) tgMsg += `  ...y ${slots.length - 8} más\n`;
+
+        // Direct booking link for this date
+        const tenantUid = club.tenantUid || club.tenantId;
+        const bookingUrl = buildPlaytomicBookingUrl(tenantUid, date);
+        tgMsg += `🔗 <a href="${bookingUrl}">Reservar en Playtomic</a>\n\n`;
       }
-      tgMsg += `\nEntra en Playtomic para reservar.`;
+
+      tgMsg += `⏰ Detectado a las ${new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
 
       const emailBody = tgMsg.replace(/<[^>]+>/g, "");
 
-      const tgOk = await sendCourtTelegramAlert(tgMsg);
-      // Use courseId=0 as placeholder for court alerts (no course associated)
+      // Send to ALL active Telegram contacts
+      const tgSent = await sendTelegramAlertToAll(tgMsg);
       await insertAlert({
         courseId: 0,
         channel: "telegram",
         message: tgMsg,
         availablePlaces: newSlotsForConfig.length,
-        status: tgOk ? "sent" : "failed",
-        errorMessage: tgOk ? undefined : "Telegram not configured",
+        status: tgSent > 0 ? "sent" : "failed",
+        errorMessage: tgSent === 0 ? "No active contacts or Telegram not configured" : undefined,
       });
-      if (tgOk) totalAlerts++;
+      if (tgSent > 0) totalAlerts += tgSent;
 
       const emailOk = await sendCourtEmailAlert(`🎾 Pistas disponibles: ${config.name}`, emailBody);
       await insertAlert({
@@ -438,9 +515,11 @@ export async function runCourtMonitorCycle(): Promise<{
 // ─── Scheduler ────────────────────────────────────────────────────────────────
 
 let _courtSchedulerInterval: ReturnType<typeof setInterval> | null = null;
+let _courtSchedulerIntervalMinutes = 5;
 
-export function startCourtScheduler(intervalMinutes: number): void {
+export function startCourtScheduler(intervalMinutes = 5): void {
   stopCourtScheduler();
+  _courtSchedulerIntervalMinutes = intervalMinutes;
   const ms = intervalMinutes * 60 * 1000;
   console.log(`[CourtMonitor] Scheduler started: every ${intervalMinutes} minutes`);
   _courtSchedulerInterval = setInterval(async () => {
@@ -462,4 +541,8 @@ export function stopCourtScheduler(): void {
 
 export function isCourtSchedulerRunning(): boolean {
   return _courtSchedulerInterval !== null;
+}
+
+export function getCourtSchedulerIntervalMinutes(): number {
+  return _courtSchedulerIntervalMinutes;
 }

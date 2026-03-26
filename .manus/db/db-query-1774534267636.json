@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `telegram_contacts` (\n  `id` int AUTO_INCREMENT PRIMARY KEY NOT NULL,\n  `name` varchar(128) NOT NULL,\n  `chatId` varchar(64) NOT NULL,\n  `isActive` boolean NOT NULL DEFAULT true,\n  `notes` text,\n  `lastAlertAt` timestamp,\n  `totalAlerts` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `telegram_contacts_chatId_unique` UNIQUE(`chatId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute CREATE TABLE IF NOT EXISTS `telegram_contacts` (\n  `id` int AUTO_INCREMENT PRIMARY KEY NOT NULL,\n  `name` varchar(128) NOT NULL,\n  `chatId` varchar(64) NOT NULL,\n  `isActive` boolean NOT NULL DEFAULT true,\n  `notes` text,\n  `lastAlertAt` timestamp,\n  `totalAlerts` int NOT NULL DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `telegram_contacts_chatId_unique` UNIQUE(`chatId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 210
+}

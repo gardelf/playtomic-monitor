@@ -4,15 +4,18 @@ import {
   AlertConfig,
   AlertHistory,
   InsertUser,
+  InsertTelegramContact,
   MonitoredClub,
   MonitoredCourse,
   MonitorSettings,
+  TelegramContact,
   alertConfigs,
   alertHistory,
   courseSnapshots,
   monitorSettings,
   monitoredClubs,
   monitoredCourses,
+  telegramContacts,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -324,4 +327,50 @@ export async function incrementMonitorStats(alertsSent: number): Promise<void> {
       lastRunAt: new Date(),
     })
     .where(eq(monitorSettings.id, settings.id));
+}
+
+// ─── Telegram Contacts ─────────────────────────────────────────────────────────────────────────────────
+
+export async function getAllTelegramContacts(): Promise<TelegramContact[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramContacts).orderBy(telegramContacts.name);
+}
+
+export async function getActiveTelegramContacts(): Promise<TelegramContact[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramContacts).where(eq(telegramContacts.isActive, true)).orderBy(telegramContacts.name);
+}
+
+export async function createTelegramContact(data: InsertTelegramContact): Promise<TelegramContact> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(telegramContacts).values(data);
+  const result = await db.select().from(telegramContacts).where(eq(telegramContacts.chatId, data.chatId)).limit(1);
+  return result[0]!;
+}
+
+export async function updateTelegramContact(id: number, data: Partial<InsertTelegramContact>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(telegramContacts).set(data).where(eq(telegramContacts.id, id));
+}
+
+export async function deleteTelegramContact(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(telegramContacts).where(eq(telegramContacts.id, id));
+}
+
+export async function incrementContactAlerts(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(telegramContacts)
+    .set({
+      totalAlerts: sql`${telegramContacts.totalAlerts} + 1`,
+      lastAlertAt: new Date(),
+    })
+    .where(eq(telegramContacts.id, id));
 }

@@ -9,6 +9,7 @@ import Monitor from "./pages/Monitor";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import Courts from "./pages/Courts";
+import Contacts from "./pages/Contacts";
 import Layout from "./components/Layout";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
         <Route path={"/alerts"} component={Alerts} />
         <Route path={"/settings"} component={Settings} />
         <Route path={"/courts"} component={Courts} />
+        <Route path={"/contacts"} component={Contacts} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
