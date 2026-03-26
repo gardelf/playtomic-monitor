@@ -66,3 +66,12 @@
 - [x] Sidebar: enlace a Contactos
 - [x] Tests: 31 tests passing
 - [x] Checkpoint
+
+## Registro de Actividad del Monitor
+- [ ] DB: tabla monitor_runs (fecha, días consultados, slots encontrados, nuevas aperturas, alertas enviadas, duración ms, estado, error)
+- [ ] Backend: helpers insertMonitorRun() y getMonitorRuns() en db.ts
+- [ ] Backend: instrumentar runCourtMonitorCycle() para guardar cada ciclo
+- [ ] tRPC: endpoint activity.list con paginación
+- [ ] Frontend: página Actividad con historial de ejecuciones, badges de estado, estadísticas
+- [ ] Sidebar: enlace a Actividad
+- [ ] Tests y checkpoint

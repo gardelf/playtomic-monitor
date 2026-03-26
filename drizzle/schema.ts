@@ -203,3 +203,33 @@ export const telegramContacts = mysqlTable("telegram_contacts", {
 
 export type TelegramContact = typeof telegramContacts.$inferSelect;
 export type InsertTelegramContact = typeof telegramContacts.$inferInsert;
+
+/** Registro de cada ciclo de ejecución del monitor de pistas */
+export const monitorRuns = mysqlTable("monitor_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Fecha/hora de inicio del ciclo */
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  /** Fecha/hora de fin del ciclo */
+  finishedAt: timestamp("finishedAt"),
+  /** Duración en milisegundos */
+  durationMs: int("durationMs"),
+  /** Días consultados (JSON array de strings 'YYYY-MM-DD') */
+  datesChecked: text("datesChecked"),
+  /** Total de slots libres encontrados en todos los días */
+  slotsFound: int("slotsFound").default(0).notNull(),
+  /** Slots que son nuevos (primera detección del día) */
+  newSlotsFound: int("newSlotsFound").default(0).notNull(),
+  /** Número de alertas Telegram enviadas */
+  alertsSent: int("alertsSent").default(0).notNull(),
+  /** Si fue disparado manualmente o por el scheduler */
+  triggeredBy: mysqlEnum("triggeredBy", ["scheduler", "manual"]).default("scheduler").notNull(),
+  /** 'ok' | 'error' | 'running' */
+  status: mysqlEnum("status", ["ok", "error", "running"]).default("running").notNull(),
+  /** Mensaje de error si status='error' */
+  errorMessage: text("errorMessage"),
+  /** Notas adicionales (ej: 'Sin pistas disponibles') */
+  notes: text("notes"),
+});
+
+export type MonitorRun = typeof monitorRuns.$inferSelect;
+export type InsertMonitorRun = typeof monitorRuns.$inferInsert;

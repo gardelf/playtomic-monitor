@@ -40,6 +40,8 @@ import {
   createTelegramContact,
   deleteTelegramContact,
   getAllTelegramContacts,
+  getMonitorRuns,
+  getMonitorRunStats,
   updateTelegramContact,
 } from "./db";
 
@@ -382,7 +384,17 @@ const telegramContactsRouter = router({
     .mutation(({ input }) => sendTelegramTestMessage(input.chatId)),
 });
 
-// ─── App Router ───────────────────────────────────────────────────────────────
+// ─── Activity Router ─────────────────────────────────────────────────────────────────────────────────
+
+const activityRouter = router({
+  list: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(500).default(100) }).optional())
+    .query(({ input }) => getMonitorRuns(input?.limit ?? 100)),
+
+  stats: publicProcedure.query(() => getMonitorRunStats()),
+});
+
+// ─── App Router ─────────────────────────────────────────────────────────────────────────────────
 
 export const appRouter = router({
   system: systemRouter,
@@ -400,6 +412,7 @@ export const appRouter = router({
   monitor: monitorRouter,
   courts: courtsRouter,
   telegramContacts: telegramContactsRouter,
+  activity: activityRouter,
 });
 
 export type AppRouter = typeof appRouter;

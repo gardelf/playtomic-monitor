@@ -15,6 +15,8 @@ import {
   InsertCourtWatchConfig,
 } from "../drizzle/schema";
 import {
+  createMonitorRun,
+  finishMonitorRun,
   getActiveTelegramContacts,
   getAlertConfig,
   incrementContactAlerts,
@@ -328,15 +330,19 @@ async function sendCourtEmailAlert(subject: string, body: string): Promise<boole
 
 // ─── Core Monitor Cycle ───────────────────────────────────────────────────────
 
-export async function runCourtMonitorCycle(): Promise<{
+export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" = "scheduler"): Promise<{
   checked: number;
   slotsFound: number;
   newSlots: number;
   alertsSent: number;
 }> {
   console.log("[CourtMonitor] Starting court monitor cycle...");
+  const runId = await createMonitorRun(triggeredBy);
   const db = await getDb();
-  if (!db) return { checked: 0, slotsFound: 0, newSlots: 0, alertsSent: 0 };
+  if (!db) {
+    await finishMonitorRun(runId, { slotsFound: 0, newSlotsFound: 0, alertsSent: 0, datesChecked: [], status: "error", errorMessage: "DB not available" });
+    return { checked: 0, slotsFound: 0, newSlots: 0, alertsSent: 0 };
+  }
 
   const configs = await getActiveCourtWatchConfigs();
   let totalChecked = 0;
@@ -501,6 +507,30 @@ export async function runCourtMonitorCycle(): Promise<{
     }
   }
 
+  // Collect all dates checked
+  const allDatesChecked: string[] = [];
+  for (const config of configs) {
+    const dates = getUpcomingDates(config.dayOfWeek, config.weeksAhead);
+    for (const d of dates) {
+      if (!allDatesChecked.includes(d)) allDatesChecked.push(d);
+    }
+  }
+
+  const notes = totalSlotsFound === 0
+    ? "Sin pistas disponibles en el rango configurado"
+    : totalNewSlots === 0
+    ? `${totalSlotsFound} slots encontrados, ninguno nuevo`
+    : `${totalNewSlots} nuevos slots detectados de ${totalSlotsFound} totales`;
+
+  await finishMonitorRun(runId, {
+    slotsFound: totalSlotsFound,
+    newSlotsFound: totalNewSlots,
+    alertsSent: totalAlerts,
+    datesChecked: allDatesChecked,
+    status: "ok",
+    notes,
+  });
+
   console.log(
     `[CourtMonitor] Cycle complete: ${totalChecked} dates checked, ${totalSlotsFound} slots found, ${totalNewSlots} new, ${totalAlerts} alerts`
   );
@@ -524,7 +554,7 @@ export function startCourtScheduler(intervalMinutes = 5): void {
   console.log(`[CourtMonitor] Scheduler started: every ${intervalMinutes} minutes`);
   _courtSchedulerInterval = setInterval(async () => {
     try {
-      await runCourtMonitorCycle();
+      await runCourtMonitorCycle("scheduler");
     } catch (err) {
       console.error("[CourtMonitor] Scheduler error:", err);
     }

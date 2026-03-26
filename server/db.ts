@@ -5,6 +5,8 @@ import {
   AlertHistory,
   InsertUser,
   InsertTelegramContact,
+  InsertMonitorRun,
+  MonitorRun,
   MonitoredClub,
   MonitoredCourse,
   MonitorSettings,
@@ -15,6 +17,7 @@ import {
   monitorSettings,
   monitoredClubs,
   monitoredCourses,
+  monitorRuns,
   telegramContacts,
   users,
 } from "../drizzle/schema";
@@ -373,4 +376,89 @@ export async function incrementContactAlerts(id: number): Promise<void> {
       lastAlertAt: new Date(),
     })
     .where(eq(telegramContacts.id, id));
+}
+
+// ─── Monitor Runs (Activity Log) ─────────────────────────────────────────────────────────────────────────────────
+
+/** Crea un registro de inicio de ciclo y devuelve su ID */
+export async function createMonitorRun(triggeredBy: "scheduler" | "manual"): Promise<number> {
+  const db = await getDb();
+  if (!db) return -1;
+  const result = await db.insert(monitorRuns).values({
+    startedAt: new Date(),
+    status: "running",
+    triggeredBy,
+    slotsFound: 0,
+    newSlotsFound: 0,
+    alertsSent: 0,
+  });
+  return (result as any).insertId ?? -1;
+}
+
+/** Actualiza el registro al finalizar el ciclo */
+export async function finishMonitorRun(
+  id: number,
+  data: {
+    slotsFound: number;
+    newSlotsFound: number;
+    alertsSent: number;
+    datesChecked: string[];
+    status: "ok" | "error";
+    errorMessage?: string;
+    notes?: string;
+  }
+): Promise<void> {
+  const db = await getDb();
+  if (!db || id < 0) return;
+  const now = new Date();
+  const run = await db.select().from(monitorRuns).where(eq(monitorRuns.id, id)).limit(1);
+  const startedAt = run[0]?.startedAt ?? now;
+  const durationMs = now.getTime() - new Date(startedAt).getTime();
+  await db
+    .update(monitorRuns)
+    .set({
+      finishedAt: now,
+      durationMs,
+      slotsFound: data.slotsFound,
+      newSlotsFound: data.newSlotsFound,
+      alertsSent: data.alertsSent,
+      datesChecked: JSON.stringify(data.datesChecked),
+      status: data.status,
+      errorMessage: data.errorMessage ?? null,
+      notes: data.notes ?? null,
+    })
+    .where(eq(monitorRuns.id, id));
+}
+
+/** Obtiene los últimos N registros de actividad */
+export async function getMonitorRuns(limit = 100): Promise<MonitorRun[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(monitorRuns)
+    .orderBy(sql`${monitorRuns.startedAt} DESC`)
+    .limit(limit);
+}
+
+/** Estadísticas globales de actividad */
+export async function getMonitorRunStats(): Promise<{
+  totalRuns: number;
+  totalSlotsFound: number;
+  totalAlertsSent: number;
+  lastRunAt: Date | null;
+  successRate: number;
+}> {
+  const db = await getDb();
+  if (!db) return { totalRuns: 0, totalSlotsFound: 0, totalAlertsSent: 0, lastRunAt: null, successRate: 0 };
+  const rows = await db.select().from(monitorRuns).orderBy(sql`${monitorRuns.startedAt} DESC`).limit(500);
+  const finished = rows.filter((r) => r.status !== "running");
+  const ok = finished.filter((r) => r.status === "ok").length;
+  return {
+    totalRuns: finished.length,
+    totalSlotsFound: finished.reduce((s, r) => s + (r.slotsFound ?? 0), 0),
+    totalAlertsSent: finished.reduce((s, r) => s + (r.alertsSent ?? 0), 0),
+    lastRunAt: rows[0]?.startedAt ?? null,
+    successRate: finished.length > 0 ? Math.round((ok / finished.length) * 100) : 0,
+  };
 }
