@@ -289,7 +289,6 @@ function DatePicker({
           selected={selected}
           onSelect={handleSelect}
           disabled={{ before: today }}
-          locale={{ localize: undefined } as any}
           formatters={{
             formatWeekdayName: (day) =>
               ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"][day.getDay()]!,
