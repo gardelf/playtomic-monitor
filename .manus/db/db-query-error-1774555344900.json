@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE monitor_runs SET status = 'error', finishedAt = updatedAt, errorMessage = 'Ciclo interrumpido (servidor reiniciado antes de completarse)' WHERE status = 'running' AND startedAt < DATE_SUB(NOW(), INTERVAL 10 MINUTE);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute UPDATE monitor_runs SET status = 'error', finishedAt = updatedAt, errorMessage = 'Ciclo interrumpido (servidor reiniciado antes de completarse)' WHERE status = 'running' AND startedAt < DATE_SUB(NOW(), INTERVAL 10 MINUTE);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'updatedat' in 'field list'"
+  ]
+}

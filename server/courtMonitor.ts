@@ -341,6 +341,8 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
 }> {
   console.log("[CourtMonitor] Starting court monitor cycle...");
   const runId = await createMonitorRun(triggeredBy);
+
+  try {
   const db = await getDb();
   if (!db) {
     await finishMonitorRun(runId, { slotsFound: 0, newSlotsFound: 0, alertsSent: 0, datesChecked: [], status: "error", errorMessage: "DB not available" });
@@ -543,6 +545,24 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
     newSlots: totalNewSlots,
     alertsSent: totalAlerts,
   };
+
+  } catch (err: any) {
+    const errorMessage = err?.message ?? String(err);
+    console.error("[CourtMonitor] Cycle failed with error:", errorMessage);
+    try {
+      await finishMonitorRun(runId, {
+        slotsFound: 0,
+        newSlotsFound: 0,
+        alertsSent: 0,
+        datesChecked: [],
+        status: "error",
+        errorMessage,
+      });
+    } catch (finishErr) {
+      console.error("[CourtMonitor] Could not finishMonitorRun after error:", finishErr);
+    }
+    return { checked: 0, slotsFound: 0, newSlots: 0, alertsSent: 0 };
+  }
 }
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────

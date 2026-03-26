@@ -1,0 +1,110 @@
+{
+  "query": "SELECT id, status, startedAt, finishedAt, durationMs, datesChecked, slotsFound, errorMessage FROM monitor_runs ORDER BY startedAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, status, startedAt, finishedAt, durationMs, datesChecked, slotsFound, errorMessage FROM monitor_runs ORDER BY startedAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "60010",
+      "status": "running",
+      "startedAt": "2026-03-26 20:00:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60009",
+      "status": "running",
+      "startedAt": "2026-03-26 19:55:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60008",
+      "status": "running",
+      "startedAt": "2026-03-26 19:50:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60007",
+      "status": "running",
+      "startedAt": "2026-03-26 19:45:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60006",
+      "status": "running",
+      "startedAt": "2026-03-26 19:45:19",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60005",
+      "status": "running",
+      "startedAt": "2026-03-26 19:40:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60004",
+      "status": "running",
+      "startedAt": "2026-03-26 19:40:19",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60003",
+      "status": "running",
+      "startedAt": "2026-03-26 19:35:29",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60002",
+      "status": "running",
+      "startedAt": "2026-03-26 19:35:19",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "60001",
+      "status": "running",
+      "startedAt": "2026-03-26 19:15:35",
+      "finishedAt": "NULL",
+      "durationMs": "NULL",
+      "datesChecked": "NULL",
+      "slotsFound": "0",
+      "errorMessage": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tstartedAt\tfinishedAt\tdurationMs\tdatesChecked\tslotsFound\terrorMessage\n60010\trunning\t2026-03-26 20:00:29\tNULL\tNULL\tNULL\t0\tNULL\n60009\trunning\t2026-03-26 19:55:29\tNULL\tNULL\tNULL\t0\tNULL\n60008\trunning\t2026-03-26 19:50:29\tNULL\tNULL\tNULL\t0\tNULL\n60007\trunning\t2026-03-26 19:45:29\tNULL\tNULL\tNULL\t0\tNULL\n60006\trunning\t2026-03-26 19:45:19\tNULL\tNULL\tNULL\t0\tNULL\n60005\trunning\t2026-03-26 19:40:29\tNULL\tNULL\tNULL\t0\tNULL\n60004\trunning\t2026-03-26 19:40:19\tNULL\tNULL\tNULL\t0\tNULL\n60003\trunning\t2026-03-26 19:35:29\tNULL\tNULL\tNULL\t0\tNULL\n60002\trunning\t2026-03-26 19:35:19\tNULL\tNULL\tNULL\t0\tNULL\n60001\trunning\t2026-03-26 19:15:35\tNULL\tNULL\tNULL\t0\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 75
+}

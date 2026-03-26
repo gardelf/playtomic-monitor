@@ -88,3 +88,10 @@
 - [x] Auto-arranque al iniciar el servidor si estaba activo antes del reinicio
 - [x] Tests: 31/31 passing
 - [x] Checkpoint
+
+## Bug: Registros de actividad quedan en estado "Ejecutando"
+- [x] Diagnosticar: faltaba try/catch global en runCourtMonitorCycle
+- [x] Corregir: envolver todo el ciclo en try/catch para garantizar finishMonitorRun siempre se llama
+- [x] Limpiar registros históricos atascados en 'running'
+- [x] Tests: 31/31 passing
+- [x] Checkpoint
