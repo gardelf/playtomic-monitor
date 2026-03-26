@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   Plus,
   RefreshCw,
@@ -11,18 +11,20 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
-  Zap,
   MapPin,
   Timer,
   Euro,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -38,6 +40,35 @@ const COURT_FEATURE_LABELS: Record<string, string> = {
   quick: "Quick",
 };
 
+const STORAGE_KEY = "playtomic_selected_dates";
+const MAX_DAYS = 2;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function toDateStr(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function fromDateStr(s: string): Date {
+  const [y, m, d] = s.split("-");
+  return new Date(parseInt(y!), parseInt(m!) - 1, parseInt(d!));
+}
+
+function formatDateFull(dateStr: string): string {
+  if (!dateStr) return "";
+  const date = fromDateStr(dateStr);
+  return date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function formatDateShort(dateStr: string): string {
+  if (!dateStr) return "";
+  const date = fromDateStr(dateStr);
+  return date.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+}
+
 function courtFeatureBadge(feature?: string | null) {
   const label = feature ? (COURT_FEATURE_LABELS[feature] ?? feature) : null;
   if (!label) return null;
@@ -52,7 +83,7 @@ function courtFeatureBadge(feature?: string | null) {
   return <span className={`text-xs px-2 py-0.5 rounded border ${cls}`}>{label}</span>;
 }
 
-// ─── Slot list (shared renderer) ─────────────────────────────────────────────
+// ─── Slot types ───────────────────────────────────────────────────────────────
 
 type Slot = {
   courtName: string;
@@ -72,11 +103,13 @@ function groupByCourt(slots: Slot[]) {
   return Array.from(map.entries()).map(([name, s]) => ({ name, slots: s }));
 }
 
+// ─── Slot list renderer ───────────────────────────────────────────────────────
+
 function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slot[] }[]; totalSlots: number }) {
   if (byCourt.length === 0) {
     return (
       <div className="text-center py-8 border border-dashed border-border rounded-lg">
-        <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+        <CalendarIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
         <p className="text-muted-foreground text-sm">Sin pistas disponibles en el rango 18:30–20:30</p>
       </div>
     );
@@ -84,7 +117,7 @@ function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slo
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground mb-3">
-        {totalSlots} slots en {byCourt.length} pistas
+        {totalSlots} slot{totalSlots !== 1 ? "s" : ""} en {byCourt.length} pista{byCourt.length !== 1 ? "s" : ""}
       </p>
       {byCourt.map(({ name, slots }) => (
         <div key={name} className="bg-background/50 border border-border rounded-lg p-3">
@@ -119,16 +152,16 @@ function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slo
   );
 }
 
-// ─── Quick Wednesday Card ─────────────────────────────────────────────────────
+// ─── Day availability card ────────────────────────────────────────────────────
 
-function QuickWedCard({
+function DayAvailabilityCard({
   tenantId,
   date,
-  label,
+  onRemove,
 }: {
   tenantId: string;
   date: string;
-  label: string;
+  onRemove: () => void;
 }) {
   const { data, isLoading, refetch } = trpc.courts.checkDate.useQuery(
     { tenantId, date, startTimeMin: "18:30", startTimeMax: "20:30" },
@@ -136,28 +169,49 @@ function QuickWedCard({
   );
 
   const byCourt = useMemo(() => groupByCourt(data?.slots ?? []), [data]);
+  const hasSlots = byCourt.length > 0;
 
   return (
-    <Card className="bg-card border-border flex-1 min-w-0">
+    <Card className={`bg-card border flex-1 min-w-0 transition-colors ${hasSlots && !isLoading ? "border-primary/40" : "border-border"}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm text-foreground flex items-center gap-2 min-w-0">
-            <Zap className="w-4 h-4 text-primary flex-shrink-0" />
-            <span className="truncate">
-              <span className="text-muted-foreground font-normal">{label} — </span>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-sm text-foreground capitalize truncate">
               {formatDateFull(date)}
-            </span>
-          </CardTitle>
-          <button
-            onClick={() => refetch()}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 flex-shrink-0"
-          >
-            <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">18:30–20:30</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* availability badge */}
+            {!isLoading && (
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                  hasSlots
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "bg-muted/40 text-muted-foreground border-border"
+                }`}
+              >
+                {hasSlots ? `${data?.slots.length} libre${data!.slots.length !== 1 ? "s" : ""}` : "Sin pistas"}
+              </span>
+            )}
+            <button
+              onClick={() => refetch()}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Actualizar"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={onRemove}
+              className="text-muted-foreground hover:text-destructive transition-colors"
+              title="Quitar día"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">18:30–20:30</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {isLoading ? (
           <div className="text-center py-6 text-muted-foreground text-sm">Consultando Playtomic...</div>
         ) : (
@@ -165,6 +219,98 @@ function QuickWedCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Date picker (calendar popover, max 2 days) ───────────────────────────────
+
+function DatePicker({
+  selectedDates,
+  onChange,
+}: {
+  selectedDates: string[];
+  onChange: (dates: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const selected = selectedDates.map(fromDateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const handleSelect = (days: Date[] | undefined) => {
+    if (!days) return;
+    // Keep only the last MAX_DAYS selected
+    const sorted = [...days].sort((a, b) => a.getTime() - b.getTime());
+    const limited = sorted.slice(-MAX_DAYS);
+    onChange(limited.map(toDateStr));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="gap-2 border-border text-muted-foreground hover:text-foreground"
+        >
+          <CalendarIcon className="w-4 h-4" />
+          {selectedDates.length === 0
+            ? "Seleccionar días"
+            : selectedDates.length === 1
+            ? formatDateShort(selectedDates[0]!)
+            : `${formatDateShort(selectedDates[0]!)} · ${formatDateShort(selectedDates[1]!)}`}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 bg-card border-border" align="end">
+        <div className="p-3 border-b border-border">
+          <p className="text-xs text-muted-foreground">
+            Selecciona hasta <strong className="text-foreground">2 días</strong> para comparar disponibilidad
+          </p>
+          {selectedDates.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {selectedDates.map((d) => (
+                <span
+                  key={d}
+                  className="inline-flex items-center gap-1 text-xs bg-primary/15 text-primary border border-primary/30 rounded-full px-2.5 py-0.5"
+                >
+                  {formatDateShort(d)}
+                  <button
+                    onClick={() => onChange(selectedDates.filter((x) => x !== d))}
+                    className="hover:text-destructive transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <Calendar
+          mode="multiple"
+          selected={selected}
+          onSelect={handleSelect}
+          disabled={{ before: today }}
+          locale={{ localize: undefined } as any}
+          formatters={{
+            formatWeekdayName: (day) =>
+              ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"][day.getDay()]!,
+            formatMonthDropdown: (date) =>
+              date.toLocaleString("es-ES", { month: "short" }),
+          }}
+          className="p-3"
+        />
+        <div className="p-3 border-t border-border flex justify-between items-center">
+          <button
+            onClick={() => onChange([])}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Limpiar selección
+          </button>
+          <Button size="sm" onClick={() => setOpen(false)} className="bg-primary text-primary-foreground">
+            Confirmar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -418,7 +564,7 @@ function WatchConfigCard({
               <CardTitle className="text-base text-foreground truncate">{config.name}</CardTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
-                  <Calendar className="w-3 h-3" />
+                  <CalendarIcon className="w-3 h-3" />
                   {DAY_NAMES[config.dayOfWeek]}
                 </Badge>
                 <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
@@ -496,8 +642,25 @@ export default function Courts() {
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
-  // Compute the next 2 Wednesdays
-  const [wed1, wed2] = useMemo(() => getUpcomingDatesClient(3, 2), []);
+  // Selected dates — persisted in localStorage
+  const [selectedDates, setSelectedDates] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // Filter out past dates
+        return parsed.filter((d) => fromDateStr(d) >= today).slice(0, MAX_DAYS);
+      }
+    } catch {}
+    // Default: next 2 Wednesdays
+    return getUpcomingDatesClient(3, 2);
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedDates));
+  }, [selectedDates]);
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
@@ -509,7 +672,7 @@ export default function Courts() {
             Disponibilidad de pistas de pádel en Rivapadel Sport Club
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -520,27 +683,34 @@ export default function Courts() {
             <RefreshCw className={`w-4 h-4 ${runNowMut.isPending ? "animate-spin" : ""}`} />
             Comprobar ahora
           </Button>
+          <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
           {club && <NewWatchForm clubId={club.id} onCreated={() => refetchConfigs()} />}
         </div>
       </div>
 
-      {/* Quick check: next 2 Wednesdays side by side */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        {wed1 && (
-          <QuickWedCard
-            tenantId={RIVAPADEL_TENANT}
-            date={wed1}
-            label="Próximo miércoles"
-          />
-        )}
-        {wed2 && (
-          <QuickWedCard
-            tenantId={RIVAPADEL_TENANT}
-            date={wed2}
-            label="En 2 semanas"
-          />
-        )}
-      </div>
+      {/* Selected days availability */}
+      {selectedDates.length === 0 ? (
+        <Card className="bg-card border-border">
+          <CardContent className="py-12 text-center">
+            <CalendarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm font-medium">Ningún día seleccionado</p>
+            <p className="text-muted-foreground/60 text-xs mt-1">
+              Usa el botón "Seleccionar días" para elegir hasta 2 días y ver la disponibilidad
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4">
+          {selectedDates.map((date) => (
+            <DayAvailabilityCard
+              key={date}
+              tenantId={RIVAPADEL_TENANT}
+              date={date}
+              onRemove={() => setSelectedDates((prev) => prev.filter((d) => d !== date))}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Watch Configs */}
       <div className="space-y-3">
@@ -561,7 +731,7 @@ export default function Courts() {
         ) : !watchConfigs || watchConfigs.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="py-10 text-center">
-              <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <CalendarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground text-sm">Sin vigilancias configuradas</p>
               <p className="text-muted-foreground/60 text-xs mt-1">
                 Crea una vigilancia para recibir alertas cuando haya pistas disponibles
@@ -584,7 +754,7 @@ export default function Courts() {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function getUpcomingDatesClient(dayOfWeek: number, weeksAhead: number): string[] {
   const dates: string[] = [];
@@ -597,28 +767,11 @@ function getUpcomingDatesClient(dayOfWeek: number, weeksAhead: number): string[]
     let diff = dayOfWeek - d.getDay();
     if (diff <= 0) diff += 7;
     d.setDate(d.getDate() + diff + w * 7);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const key = `${yyyy}-${mm}-${dd}`;
+    const key = toDateStr(d);
     if (!seen.has(key)) {
       seen.add(key);
       dates.push(key);
     }
   }
   return dates;
-}
-
-function formatDateShort(dateStr: string): string {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
-  const date = new Date(parseInt(y!), parseInt(m!) - 1, parseInt(d!));
-  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-}
-
-function formatDateFull(dateStr: string): string {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
-  const date = new Date(parseInt(y!), parseInt(m!) - 1, parseInt(d!));
-  return date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
 }

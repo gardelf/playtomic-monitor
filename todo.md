@@ -50,3 +50,8 @@
 
 ## Mejoras Pistas
 - [x] Panel rápido: mostrar disponibilidad de los 2 próximos miércoles (no solo el primero)
+
+## Selector de días en Pistas
+- [x] Selector de calendario (hasta 2 días) en lugar del panel fijo de miércoles
+- [x] Mostrar disponibilidad de los 2 días seleccionados en paralelo
+- [x] Persistir la selección en localStorage para no perderla al recargar
