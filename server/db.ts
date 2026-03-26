@@ -385,7 +385,7 @@ export async function incrementContactAlerts(id: number): Promise<void> {
 export async function createMonitorRun(triggeredBy: "scheduler" | "manual"): Promise<number> {
   const db = await getDb();
   if (!db) return -1;
-  const result = await db.insert(monitorRuns).values({
+  await db.insert(monitorRuns).values({
     startedAt: new Date(),
     status: "running",
     triggeredBy,
@@ -393,7 +393,15 @@ export async function createMonitorRun(triggeredBy: "scheduler" | "manual"): Pro
     newSlotsFound: 0,
     alertsSent: 0,
   });
-  return (result as any).insertId ?? -1;
+  // Drizzle/mysql2 no expone insertId de forma fiable; obtenemos el último ID insertado directamente
+  const rows = await db
+    .select({ id: monitorRuns.id })
+    .from(monitorRuns)
+    .orderBy(sql`${monitorRuns.id} DESC`)
+    .limit(1);
+  const id = rows[0]?.id ?? -1;
+  console.log(`[CourtMonitor] createMonitorRun → runId=${id}`);
+  return id;
 }
 
 /** Actualiza el registro al finalizar el ciclo */
@@ -409,8 +417,10 @@ export async function finishMonitorRun(
     notes?: string;
   }
 ): Promise<void> {
+  console.log(`[CourtMonitor] finishMonitorRun → runId=${id}, status=${data.status}`);
   const db = await getDb();
-  if (!db || id < 0) return;
+  if (!db) { console.warn('[CourtMonitor] finishMonitorRun: no DB'); return; }
+  if (id < 0) { console.warn('[CourtMonitor] finishMonitorRun: invalid runId', id); return; }
   const now = new Date();
   const run = await db.select().from(monitorRuns).where(eq(monitorRuns.id, id)).limit(1);
   const startedAt = run[0]?.startedAt ?? now;

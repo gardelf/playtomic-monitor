@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, status, startedAt, finishedAt, durationMs, slotsFound FROM monitor_runs WHERE id = 60017;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, status, startedAt, finishedAt, durationMs, slotsFound FROM monitor_runs WHERE id = 60017;",
+  "rows": [
+    {
+      "id": "60017",
+      "status": "ok",
+      "startedAt": "2026-03-26 20:15:37",
+      "finishedAt": "2026-03-26 20:15:37",
+      "durationMs": "-358",
+      "slotsFound": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tstartedAt\tfinishedAt\tdurationMs\tslotsFound\n60017\tok\t2026-03-26 20:15:37\t2026-03-26 20:15:37\t-358\t0\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

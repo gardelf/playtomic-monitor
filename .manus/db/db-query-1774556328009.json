@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE monitor_runs SET status = 'error', finishedAt = NOW(), errorMessage = 'Ciclo interrumpido (bug insertId corregido)' WHERE status = 'running';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute UPDATE monitor_runs SET status = 'error', finishedAt = NOW(), errorMessage = 'Ciclo interrumpido (bug insertId corregido)' WHERE status = 'running';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 66
+}

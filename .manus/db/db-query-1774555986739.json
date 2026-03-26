@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, isActive, dayOfWeek, startTimeMin, startTimeMax, clubId FROM court_watch_configs;\nSELECT id, name, tenantId FROM monitored_clubs LIMIT 5;\nSELECT id, status, startedAt, finishedAt, durationMs, slotsFound FROM monitor_runs ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, name, isActive, dayOfWeek, startTimeMin, startTimeMax, clubId FROM court_watch_configs;\nSELECT id, name, tenantId FROM monitored_clubs LIMIT 5;\nSELECT id, status, startedAt, finishedAt, durationMs, slotsFound FROM monitor_runs ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Cargando...",
+      "tenantId": "da78a74a-43b3-11e8-8674-52540049669c"
+    }
+  ],
+  "messages": [
+    "id\tstatus\tstartedAt\tfinishedAt\tdurationMs\tslotsFound",
+    "60014\trunning\t2026-03-26 20:10:29\tNULL\tNULL\t0",
+    "60013\trunning\t2026-03-26 20:09:39\tNULL\tNULL\t0",
+    "60012\trunning\t2026-03-26 20:07:04\tNULL\tNULL\t0",
+    "60011\trunning\t2026-03-26 20:05:29\tNULL\tNULL\t0",
+    "60010\trunning\t2026-03-26 20:00:29\tNULL\tNULL\t0"
+  ],
+  "stdout": "id\tname\ttenantId\n1\tCargando...\tda78a74a-43b3-11e8-8674-52540049669c\nid\tstatus\tstartedAt\tfinishedAt\tdurationMs\tslotsFound\n60014\trunning\t2026-03-26 20:10:29\tNULL\tNULL\t0\n60013\trunning\t2026-03-26 20:09:39\tNULL\tNULL\t0\n60012\trunning\t2026-03-26 20:07:04\tNULL\tNULL\t0\n60011\trunning\t2026-03-26 20:05:29\tNULL\tNULL\t0\n60010\trunning\t2026-03-26 20:00:29\tNULL\tNULL\t0\n",
+  "stderr": "",
+  "execution_time_ms": 72
+}
