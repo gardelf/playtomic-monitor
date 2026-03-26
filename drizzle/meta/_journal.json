@@ -1,5 +1,27 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1774522468323,
+      "tag": "0000_magical_warbound",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774522624389,
+      "tag": "0001_wealthy_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774522667764,
+      "tag": "0002_big_tombstone",
+      "breakpoints": true
+    }
+  ]
 }

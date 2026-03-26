@@ -1,0 +1,1 @@
+ALTER TABLE `alert_configs` MODIFY COLUMN `config` text NOT NULL;
