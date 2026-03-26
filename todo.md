@@ -36,3 +36,14 @@
 - [x] Configuración de alertas guardada en DB (sin secrets hardcodeados)
 - [x] Test end-to-end del flujo de monitorización (vitest)
 - [x] Checkpoint final
+
+## Monitor de Pistas (nueva funcionalidad)
+- [x] Migración DB: tablas court_watch_configs y court_availability_snapshots
+- [x] Backend: fetchCourtAvailability() usando /v1/availability + /v1/tenants/{id}/resources
+- [x] Backend: runCourtMonitorCycle() con filtro miércoles 18:30-20:30
+- [x] tRPC: router courts con CRUD de configuraciones y snapshots
+- [x] Frontend: página Courts con tabla de disponibilidad en tiempo real
+- [x] Frontend: formulario para configurar día/hora/duración a vigilar
+- [x] Alertas: notificación cuando aparece slot disponible en el rango configurado
+- [x] Tests: 31 tests passing (16 courtMonitor + 14 monitor + 1 auth)
+- [x] Checkpoint

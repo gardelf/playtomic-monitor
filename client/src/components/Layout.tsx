@@ -11,13 +11,15 @@ import {
   Radio,
   ChevronRight,
   Zap,
+  Grid3X3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/monitor", label: "Monitorización", icon: Activity },
+  { href: "/courts", label: "Pistas", icon: Grid3X3 },
+  { href: "/monitor", label: "Cursos", icon: Activity },
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];

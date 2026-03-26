@@ -19,6 +19,21 @@ import {
   upsertCourse,
 } from "./db";
 import { fetchCourses, fetchLessons, isSchedulerRunning, runMonitorCycle, startScheduler, stopScheduler } from "./monitor";
+import {
+  createCourtWatchConfig,
+  deleteCourtWatchConfig,
+  fetchCourtAvailability,
+  fetchCourtResources,
+  getCourtWatchConfigs,
+  getLatestCourtAvailability,
+  getRecentCourtSnapshots,
+  getUpcomingDates,
+  isCourtSchedulerRunning,
+  runCourtMonitorCycle,
+  startCourtScheduler,
+  stopCourtScheduler,
+  updateCourtWatchConfig,
+} from "./courtMonitor";
 
 // ─── Club Router ──────────────────────────────────────────────────────────────
 
@@ -177,6 +192,142 @@ const monitorRouter = router({
     }),
 });
 
+// ─── Courts Router ───────────────────────────────────────────────────────────
+
+const courtsRouter = router({
+  /** Listar configuraciones de vigilancia de pistas */
+  watchConfigs: publicProcedure
+    .input(z.object({ clubId: z.number().optional() }))
+    .query(({ input }) => getCourtWatchConfigs(input.clubId)),
+
+  /** Crear nueva configuración de vigilancia */
+  createWatch: publicProcedure
+    .input(
+      z.object({
+        clubId: z.number(),
+        name: z.string().min(1),
+        dayOfWeek: z.number().min(0).max(6),
+        startTimeMin: z.string(),
+        startTimeMax: z.string(),
+        preferredDuration: z.number().optional(),
+        sportId: z.string().default("PADEL"),
+        weeksAhead: z.number().min(1).max(12).default(4),
+      })
+    )
+    .mutation(({ input }) => createCourtWatchConfig(input)),
+
+  /** Actualizar configuración */
+  updateWatch: publicProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        dayOfWeek: z.number().min(0).max(6).optional(),
+        startTimeMin: z.string().optional(),
+        startTimeMax: z.string().optional(),
+        preferredDuration: z.number().nullable().optional(),
+        isActive: z.boolean().optional(),
+        weeksAhead: z.number().min(1).max(12).optional(),
+      })
+    )
+    .mutation(({ input }) => {
+      const { id, ...data } = input;
+      return updateCourtWatchConfig(id, data);
+    }),
+
+  /** Eliminar configuración */
+  deleteWatch: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(({ input }) => deleteCourtWatchConfig(input.id)),
+
+  /** Disponibilidad actual (último ciclo) para una configuración */
+  latestAvailability: publicProcedure
+    .input(z.object({ watchConfigId: z.number() }))
+    .query(({ input }) => getLatestCourtAvailability(input.watchConfigId)),
+
+  /** Historial de snapshots */
+  snapshots: publicProcedure
+    .input(z.object({ watchConfigId: z.number(), limit: z.number().optional() }))
+    .query(({ input }) => getRecentCourtSnapshots(input.watchConfigId, input.limit)),
+
+  /** Ejecutar ciclo de monitorización de pistas ahora */
+  runNow: publicProcedure.mutation(() => runCourtMonitorCycle()),
+
+  /** Iniciar scheduler de pistas */
+  startScheduler: publicProcedure
+    .input(z.object({ intervalMinutes: z.number().min(1).max(60) }))
+    .mutation(({ input }) => {
+      startCourtScheduler(input.intervalMinutes);
+      return { started: true };
+    }),
+
+  /** Detener scheduler de pistas */
+  stopScheduler: publicProcedure.mutation(() => {
+    stopCourtScheduler();
+    return { stopped: true };
+  }),
+
+  /** Estado del scheduler */
+  schedulerStatus: publicProcedure.query(() => ({
+    running: isCourtSchedulerRunning(),
+  })),
+
+  /** Consulta directa de disponibilidad de pistas en Playtomic para una fecha */
+  checkDate: publicProcedure
+    .input(
+      z.object({
+        tenantId: z.string(),
+        date: z.string(),
+        sportId: z.string().default("PADEL"),
+        startTimeMin: z.string().default("18:30"),
+        startTimeMax: z.string().default("20:30"),
+        preferredDuration: z.number().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const [availability, resources] = await Promise.all([
+        fetchCourtAvailability(input.tenantId, input.date, input.sportId),
+        fetchCourtResources(input.tenantId),
+      ]);
+      const resourceMap = Object.fromEntries(resources.map((r) => [r.resource_id, r]));
+
+      const slots: {
+        courtName: string;
+        resourceId: string;
+        courtType?: string;
+        courtFeature?: string;
+        time: string;
+        duration: number;
+        price: string;
+      }[] = [];
+
+      for (const courtAvail of availability) {
+        const resource = resourceMap[courtAvail.resource_id];
+        if (!resource?.is_active) continue;
+        for (const slot of courtAvail.slots) {
+          const time = slot.start_time.substring(0, 5);
+          if (time < input.startTimeMin || time > input.startTimeMax) continue;
+          if (input.preferredDuration && slot.duration !== input.preferredDuration) continue;
+          slots.push({
+            courtName: resource.name,
+            resourceId: courtAvail.resource_id,
+            courtType: resource.properties?.resource_type,
+            courtFeature: resource.properties?.resource_feature,
+            time,
+            duration: slot.duration,
+            price: slot.price,
+          });
+        }
+      }
+      return { date: input.date, slots };
+    }),
+
+  /** Próximas fechas para un día de la semana */
+  upcomingDates: publicProcedure
+    .input(z.object({ dayOfWeek: z.number().min(0).max(6), weeksAhead: z.number().min(1).max(12) }))
+    .query(({ input }) => getUpcomingDates(input.dayOfWeek, input.weeksAhead)),
+});
+
 // ─── App Router ───────────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -193,6 +344,7 @@ export const appRouter = router({
   courses: coursesRouter,
   alerts: alertsRouter,
   monitor: monitorRouter,
+  courts: courtsRouter,
 });
 
 export type AppRouter = typeof appRouter;

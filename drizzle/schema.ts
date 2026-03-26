@@ -126,3 +126,58 @@ export const monitorSettings = mysqlTable("monitor_settings", {
 });
 
 export type MonitorSettings = typeof monitorSettings.$inferSelect;
+
+// ─── Court Monitor Tables ─────────────────────────────────────────────────────
+
+/** Configuración de vigilancia de pistas (qué día/hora/duración vigilar) */
+export const courtWatchConfigs = mysqlTable("court_watch_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  clubId: int("clubId").notNull(),
+  /** Nombre descriptivo de la vigilancia */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** Día de la semana: 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb */
+  dayOfWeek: int("dayOfWeek").notNull(),
+  /** Hora mínima de inicio (HH:MM), ej: '18:30' */
+  startTimeMin: varchar("startTimeMin", { length: 8 }).notNull(),
+  /** Hora máxima de inicio (HH:MM), ej: '20:30' */
+  startTimeMax: varchar("startTimeMax", { length: 8 }).notNull(),
+  /** Duración deseada en minutos (60, 90, 120...) - null = cualquiera */
+  preferredDuration: int("preferredDuration"),
+  /** Sport: PADEL, TENNIS, etc. */
+  sportId: varchar("sportId", { length: 32 }).default("PADEL").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  /** Cuántas semanas hacia adelante buscar */
+  weeksAhead: int("weeksAhead").default(4).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CourtWatchConfig = typeof courtWatchConfigs.$inferSelect;
+export type InsertCourtWatchConfig = typeof courtWatchConfigs.$inferInsert;
+
+/** Snapshot de disponibilidad de pistas detectada */
+export const courtAvailabilitySnapshots = mysqlTable("court_availability_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  watchConfigId: int("watchConfigId").notNull(),
+  /** Fecha del miércoles (o día vigilado) */
+  slotDate: varchar("slotDate", { length: 16 }).notNull(),
+  /** Hora de inicio del slot */
+  slotTime: varchar("slotTime", { length: 8 }).notNull(),
+  /** Duración en minutos */
+  duration: int("duration").notNull(),
+  /** Nombre de la pista */
+  courtName: varchar("courtName", { length: 128 }).notNull(),
+  /** ID de la pista en Playtomic */
+  resourceId: varchar("resourceId", { length: 128 }).notNull(),
+  /** Tipo: indoor/outdoor */
+  courtType: varchar("courtType", { length: 32 }),
+  /** Feature: crystal/panoramic/wall */
+  courtFeature: varchar("courtFeature", { length: 32 }),
+  /** Precio */
+  price: varchar("price", { length: 32 }),
+  /** Si fue la primera vez que se detectó este slot (para alertas) */
+  isNewDetection: boolean("isNewDetection").default(true).notNull(),
+  checkedAt: timestamp("checkedAt").defaultNow().notNull(),
+});
+
+export type CourtAvailabilitySnapshot = typeof courtAvailabilitySnapshots.$inferSelect;
