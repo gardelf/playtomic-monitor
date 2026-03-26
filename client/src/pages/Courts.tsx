@@ -25,7 +25,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const DAY_NAMES_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const COURT_TYPE_LABELS: Record<string, string> = {
   indoor: "Interior",
@@ -50,20 +49,128 @@ function courtFeatureBadge(feature?: string | null) {
     quick: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
   };
   const cls = colors[feature ?? ""] ?? "bg-gray-500/20 text-gray-300 border-gray-500/30";
+  return <span className={`text-xs px-2 py-0.5 rounded border ${cls}`}>{label}</span>;
+}
+
+// ─── Slot list (shared renderer) ─────────────────────────────────────────────
+
+type Slot = {
+  courtName: string;
+  courtFeature?: string;
+  courtType?: string;
+  time: string;
+  duration: number;
+  price: string;
+};
+
+function groupByCourt(slots: Slot[]) {
+  const map = new Map<string, Slot[]>();
+  for (const slot of slots) {
+    if (!map.has(slot.courtName)) map.set(slot.courtName, []);
+    map.get(slot.courtName)!.push(slot);
+  }
+  return Array.from(map.entries()).map(([name, s]) => ({ name, slots: s }));
+}
+
+function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slot[] }[]; totalSlots: number }) {
+  if (byCourt.length === 0) {
+    return (
+      <div className="text-center py-8 border border-dashed border-border rounded-lg">
+        <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-muted-foreground text-sm">Sin pistas disponibles en el rango 18:30–20:30</p>
+      </div>
+    );
+  }
   return (
-    <span className={`text-xs px-2 py-0.5 rounded border ${cls}`}>{label}</span>
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground mb-3">
+        {totalSlots} slots en {byCourt.length} pistas
+      </p>
+      {byCourt.map(({ name, slots }) => (
+        <div key={name} className="bg-background/50 border border-border rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="w-3.5 h-3.5 text-primary" />
+            <span className="text-sm font-medium text-foreground">{name}</span>
+            {courtFeatureBadge(slots[0]?.courtFeature)}
+            <span className="text-xs text-muted-foreground ml-auto">
+              {slots[0]?.courtType ? (COURT_TYPE_LABELS[slots[0].courtType] ?? slots[0].courtType) : ""}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {slots.map((slot, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1.5"
+              >
+                <Clock className="w-3 h-3 text-primary" />
+                <span className="text-xs font-medium text-foreground">{slot.time}</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <Timer className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">{slot.duration}min</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <Euro className="w-3 h-3 text-green-400" />
+                <span className="text-xs text-green-400">{slot.price.replace(" EUR", "")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Quick Wednesday Card ─────────────────────────────────────────────────────
+
+function QuickWedCard({
+  tenantId,
+  date,
+  label,
+}: {
+  tenantId: string;
+  date: string;
+  label: string;
+}) {
+  const { data, isLoading, refetch } = trpc.courts.checkDate.useQuery(
+    { tenantId, date, startTimeMin: "18:30", startTimeMax: "20:30" },
+    { enabled: !!date, staleTime: 120000 }
+  );
+
+  const byCourt = useMemo(() => groupByCourt(data?.slots ?? []), [data]);
+
+  return (
+    <Card className="bg-card border-border flex-1 min-w-0">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm text-foreground flex items-center gap-2 min-w-0">
+            <Zap className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="truncate">
+              <span className="text-muted-foreground font-normal">{label} — </span>
+              {formatDateFull(date)}
+            </span>
+          </CardTitle>
+          <button
+            onClick={() => refetch()}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 flex-shrink-0"
+          >
+            <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">18:30–20:30</p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-6 text-muted-foreground text-sm">Consultando Playtomic...</div>
+        ) : (
+          <SlotList byCourt={byCourt} totalSlots={data?.slots.length ?? 0} />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 // ─── New Watch Form ───────────────────────────────────────────────────────────
 
-function NewWatchForm({
-  clubId,
-  onCreated,
-}: {
-  clubId: number;
-  onCreated: () => void;
-}) {
+function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Miércoles tarde");
   const [dayOfWeek, setDayOfWeek] = useState("3");
@@ -192,16 +299,20 @@ function NewWatchForm({
   );
 }
 
-// ─── Live Availability Panel ──────────────────────────────────────────────────
+// ─── Live Availability Panel (inside watch config card) ───────────────────────
 
 function LiveAvailabilityPanel({
-  watchConfigId,
   tenantId,
   config,
 }: {
-  watchConfigId: number;
   tenantId: string;
-  config: { dayOfWeek: number; startTimeMin: string; startTimeMax: string; preferredDuration?: number | null; weeksAhead: number };
+  config: {
+    dayOfWeek: number;
+    startTimeMin: string;
+    startTimeMax: string;
+    preferredDuration?: number | null;
+    weeksAhead: number;
+  };
 }) {
   const dates = getUpcomingDatesClient(config.dayOfWeek, config.weeksAhead);
   const [selectedDate, setSelectedDate] = useState(dates[0] ?? "");
@@ -217,21 +328,10 @@ function LiveAvailabilityPanel({
     { enabled: !!selectedDate, staleTime: 60000 }
   );
 
-  // Group slots by court
-  const byCourt = useMemo(() => {
-    if (!data?.slots) return [];
-    const map = new Map<string, typeof data.slots>();
-    for (const slot of data.slots) {
-      const key = slot.courtName;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(slot);
-    }
-    return Array.from(map.entries()).map(([name, slots]) => ({ name, slots }));
-  }, [data]);
+  const byCourt = useMemo(() => groupByCourt(data?.slots ?? []), [data]);
 
   return (
     <div className="mt-4 space-y-3">
-      {/* Date selector */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">Fecha:</span>
         {dates.map((d) => (
@@ -255,48 +355,10 @@ function LiveAvailabilityPanel({
           Actualizar
         </button>
       </div>
-
-      {/* Slots */}
       {isLoading ? (
         <div className="text-center py-6 text-muted-foreground text-sm">Consultando Playtomic...</div>
-      ) : byCourt.length === 0 ? (
-        <div className="text-center py-8 border border-dashed border-border rounded-lg">
-          <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">Sin pistas disponibles para {formatDateShort(selectedDate)}</p>
-          <p className="text-muted-foreground/60 text-xs mt-1">en el rango {config.startTimeMin}–{config.startTimeMax}</p>
-        </div>
       ) : (
-        <div className="space-y-2">
-          {byCourt.map(({ name, slots }) => (
-            <div key={name} className="bg-background/50 border border-border rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-3.5 h-3.5 text-primary" />
-                <span className="text-sm font-medium text-foreground">{name}</span>
-                {courtFeatureBadge(slots[0]?.courtFeature)}
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {slots[0]?.courtType ? COURT_TYPE_LABELS[slots[0].courtType] ?? slots[0].courtType : ""}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {slots.map((slot, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1.5"
-                  >
-                    <Clock className="w-3 h-3 text-primary" />
-                    <span className="text-xs font-medium text-foreground">{slot.time}</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <Timer className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{slot.duration}min</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <Euro className="w-3 h-3 text-green-400" />
-                    <span className="text-xs text-green-400">{slot.price.replace(" EUR", "")}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <SlotList byCourt={byCourt} totalSlots={data?.slots.length ?? 0} />
       )}
     </div>
   );
@@ -380,9 +442,7 @@ function WatchConfigCard({
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-              onClick={() =>
-                toggleMut.mutate({ id: config.id, isActive: !config.isActive })
-              }
+              onClick={() => toggleMut.mutate({ id: config.id, isActive: !config.isActive })}
             >
               {config.isActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </Button>
@@ -408,11 +468,7 @@ function WatchConfigCard({
 
       {expanded && (
         <CardContent className="pt-0 border-t border-border">
-          <LiveAvailabilityPanel
-            watchConfigId={config.id}
-            tenantId={tenantId}
-            config={config}
-          />
+          <LiveAvailabilityPanel tenantId={tenantId} config={config} />
         </CardContent>
       )}
     </Card>
@@ -424,7 +480,6 @@ function WatchConfigCard({
 export default function Courts() {
   const RIVAPADEL_TENANT = "da78a74a-43b3-11e8-8674-52540049669c";
 
-  // Get clubs to find the club ID
   const { data: clubs } = trpc.clubs.list.useQuery();
   const club = clubs?.[0];
 
@@ -435,35 +490,14 @@ export default function Courts() {
 
   const runNowMut = trpc.courts.runNow.useMutation({
     onSuccess: (result) => {
-      toast.success(
-        `Ciclo completado: ${result.slotsFound} slots encontrados, ${result.newSlots} nuevos`
-      );
+      toast.success(`Ciclo completado: ${result.slotsFound} slots encontrados, ${result.newSlots} nuevos`);
       refetchConfigs();
     },
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
-  // Quick check for next Wednesday 18:30-20:30
-  const nextWed = useMemo(() => getUpcomingDatesClient(3, 1)[0] ?? "", []);
-  const { data: quickCheck, isLoading: quickLoading, refetch: quickRefetch } = trpc.courts.checkDate.useQuery(
-    {
-      tenantId: RIVAPADEL_TENANT,
-      date: nextWed,
-      startTimeMin: "18:30",
-      startTimeMax: "20:30",
-    },
-    { enabled: !!nextWed, staleTime: 120000 }
-  );
-
-  const quickByCourt = useMemo(() => {
-    if (!quickCheck?.slots) return [];
-    const map = new Map<string, typeof quickCheck.slots>();
-    for (const slot of quickCheck.slots) {
-      if (!map.has(slot.courtName)) map.set(slot.courtName, []);
-      map.get(slot.courtName)!.push(slot);
-    }
-    return Array.from(map.entries()).map(([name, slots]) => ({ name, slots }));
-  }, [quickCheck]);
+  // Compute the next 2 Wednesdays
+  const [wed1, wed2] = useMemo(() => getUpcomingDatesClient(3, 2), []);
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
@@ -486,77 +520,27 @@ export default function Courts() {
             <RefreshCw className={`w-4 h-4 ${runNowMut.isPending ? "animate-spin" : ""}`} />
             Comprobar ahora
           </Button>
-          {club && (
-            <NewWatchForm clubId={club.id} onCreated={() => refetchConfigs()} />
-          )}
+          {club && <NewWatchForm clubId={club.id} onCreated={() => refetchConfigs()} />}
         </div>
       </div>
 
-      {/* Quick check: next Wednesday */}
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base text-foreground flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              Próximo miércoles — {formatDateFull(nextWed)}
-              <span className="text-xs font-normal text-muted-foreground">18:30–20:30</span>
-            </CardTitle>
-            <button
-              onClick={() => quickRefetch()}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3 h-3 ${quickLoading ? "animate-spin" : ""}`} />
-              Actualizar
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {quickLoading ? (
-            <div className="text-center py-6 text-muted-foreground text-sm">Consultando Playtomic...</div>
-          ) : quickByCourt.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-border rounded-lg">
-              <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground text-sm">Sin pistas disponibles para el próximo miércoles</p>
-              <p className="text-muted-foreground/60 text-xs mt-1">en el rango 18:30–20:30</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground mb-3">
-                {quickCheck?.slots.length} slots en {quickByCourt.length} pistas
-              </p>
-              {quickByCourt.map(({ name, slots }) => (
-                <div key={name} className="bg-background/50 border border-border rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-sm font-medium text-foreground">{name}</span>
-                    {courtFeatureBadge(slots[0]?.courtFeature)}
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {slots[0]?.courtType ? COURT_TYPE_LABELS[slots[0].courtType] ?? slots[0].courtType : ""}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {slots.map((slot, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1.5"
-                      >
-                        <Clock className="w-3 h-3 text-primary" />
-                        <span className="text-xs font-medium text-foreground">{slot.time}</span>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <Timer className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{slot.duration}min</span>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <Euro className="w-3 h-3 text-green-400" />
-                        <span className="text-xs text-green-400">{slot.price.replace(" EUR", "")}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Quick check: next 2 Wednesdays side by side */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {wed1 && (
+          <QuickWedCard
+            tenantId={RIVAPADEL_TENANT}
+            date={wed1}
+            label="Próximo miércoles"
+          />
+        )}
+        {wed2 && (
+          <QuickWedCard
+            tenantId={RIVAPADEL_TENANT}
+            date={wed2}
+            label="En 2 semanas"
+          />
+        )}
+      </div>
 
       {/* Watch Configs */}
       <div className="space-y-3">

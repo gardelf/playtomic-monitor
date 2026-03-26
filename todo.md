@@ -47,3 +47,6 @@
 - [x] Alertas: notificación cuando aparece slot disponible en el rango configurado
 - [x] Tests: 31 tests passing (16 courtMonitor + 14 monitor + 1 auth)
 - [x] Checkpoint
+
+## Mejoras Pistas
+- [x] Panel rápido: mostrar disponibilidad de los 2 próximos miércoles (no solo el primero)
