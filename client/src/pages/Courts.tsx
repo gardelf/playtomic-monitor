@@ -321,7 +321,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
   const [dayOfWeek, setDayOfWeek] = useState("3");
   const [startTimeMin, setStartTimeMin] = useState("18:30");
   const [startTimeMax, setStartTimeMax] = useState("20:30");
-  const [preferredDuration, setPreferredDuration] = useState("90");
+  const [preferredDuration, setPreferredDuration] = useState("any");
   const [weeksAhead, setWeeksAhead] = useState("4");
 
   const createMut = trpc.courts.createWatch.useMutation({
@@ -341,7 +341,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
       dayOfWeek: parseInt(dayOfWeek),
       startTimeMin,
       startTimeMax,
-      preferredDuration: preferredDuration ? parseInt(preferredDuration) : undefined,
+      preferredDuration: preferredDuration && preferredDuration !== "any" ? parseInt(preferredDuration) : undefined,
       sportId: "PADEL",
       weeksAhead: parseInt(weeksAhead),
     });
@@ -424,7 +424,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Cualquiera</SelectItem>
+                <SelectItem value="any">Cualquiera</SelectItem>
                 <SelectItem value="60">60 min</SelectItem>
                 <SelectItem value="90">90 min</SelectItem>
                 <SelectItem value="120">120 min</SelectItem>
