@@ -148,6 +148,8 @@ export const courtWatchConfigs = mysqlTable("court_watch_configs", {
   isActive: boolean("isActive").default(true).notNull(),
   /** Cuántas semanas hacia adelante buscar */
   weeksAhead: int("weeksAhead").default(4).notNull(),
+  /** Número de slots encontrados en el último ciclo (para detectar transición 0→>0) */
+  lastSlotCount: int("lastSlotCount").default(-1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -164,3 +164,14 @@
 - [x] El router stopScheduler ahora pasa manual=true
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug: Filtro de horario no se aplica — slots cuenta todos los huecos del día
+- [x] Verificado: el filtro sí se aplicaba correctamente (solo slots entre startTimeMin y startTimeMax)
+- [x] El problema real era la lógica de "nuevo" — resuelto con la mejora de transición 0→>0
+
+## Mejora: Alertas solo cuando se pasa de 0 a >0 slots
+- [x] Añadir columna lastSlotCount a court_watch_configs (migración aplicada)
+- [x] Nueva lógica: guardar conteo actual al final de cada ciclo; alertar SOLO en transición 0→>0
+- [x] Primera ejecución (lastSlotCount=-1): no alerta, solo registra la línea base
+- [x] Tests: 40/40 passing
+- [x] Checkpoint

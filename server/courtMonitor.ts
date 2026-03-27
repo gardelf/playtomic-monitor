@@ -381,7 +381,8 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
 
     // Get upcoming dates for this day of week
     const dates = getUpcomingDates(config.dayOfWeek, config.weeksAhead);
-    const newSlotsForConfig: CourtSlotResult[] = [];
+    // Todos los slots encontrados en este ciclo para esta vigilancia
+    const allSlotsForConfig: CourtSlotResult[] = [];
 
     for (const dateStr of dates) {
       const availability = await fetchCourtAvailability(club.tenantId, dateStr, config.sportId);
@@ -402,63 +403,39 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
 
         for (const slot of matchingSlots) {
           totalSlotsFound++;
-
-          // Un slot es NUEVO si no estaba disponible en el ciclo anterior.
-          // Usamos una ventana de 2×intervalo para comparar contra el último snapshot de este slot.
-          // Esto garantiza que si Playtomic libera una pista que antes no existía, se detecta.
-          const windowMs = Math.max((_courtSchedulerIntervalMinutes * 2 + 2) * 60 * 1000, 12 * 60 * 1000);
-          const windowStart = new Date(Date.now() - windowMs);
-
-          const existing = await db
-            .select()
-            .from(courtAvailabilitySnapshots)
-            .where(
-              and(
-                eq(courtAvailabilitySnapshots.watchConfigId, config.id),
-                eq(courtAvailabilitySnapshots.slotDate, dateStr),
-                eq(courtAvailabilitySnapshots.slotTime, slot.start_time.substring(0, 5)),
-                eq(courtAvailabilitySnapshots.resourceId, courtAvail.resource_id),
-                eq(courtAvailabilitySnapshots.duration, slot.duration),
-                gte(courtAvailabilitySnapshots.checkedAt, windowStart)
-              )
-            )
-            .limit(1);
-
-          const isNew = existing.length === 0;
-
-          // Guardar snapshot solo si es nuevo (evita acumular millones de filas)
-          if (isNew) {
-            await db.insert(courtAvailabilitySnapshots).values({
-              watchConfigId: config.id,
-              slotDate: dateStr,
-              slotTime: slot.start_time.substring(0, 5),
-              duration: slot.duration,
-              courtName: resource.name,
-              resourceId: courtAvail.resource_id,
-              courtType: resource.properties?.resource_type,
-              courtFeature: resource.properties?.resource_feature,
-              price: slot.price,
-              isNewDetection: true,
-            });
-          }
-
-          if (isNew) {
-            totalNewSlots++;
-            newSlotsForConfig.push({
-              date: dateStr,
-              time: slot.start_time.substring(0, 5),
-              duration: slot.duration,
-              courtName: resource.name,
-              resourceId: courtAvail.resource_id,
-              courtType: resource.properties?.resource_type,
-              courtFeature: resource.properties?.resource_feature,
-              price: slot.price,
-              isNew: true,
-            });
-          }
+          allSlotsForConfig.push({
+            date: dateStr,
+            time: slot.start_time.substring(0, 5),
+            duration: slot.duration,
+            courtName: resource.name,
+            resourceId: courtAvail.resource_id,
+            courtType: resource.properties?.resource_type,
+            courtFeature: resource.properties?.resource_feature,
+            price: slot.price,
+            isNew: false,
+          });
         }
       }
     }
+
+    // Lógica de alerta: solo cuando se pasa de 0 slots a >0 (transición 0→>0)
+    // lastSlotCount = -1 significa primera ejecución (nunca vigilada antes)
+    const currentSlotCount = allSlotsForConfig.length;
+    const prevSlotCount = config.lastSlotCount ?? -1;
+    const isFirstRun = prevSlotCount === -1;
+    const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
+
+    // Actualizar lastSlotCount en la DB para el próximo ciclo
+    await updateCourtWatchConfig(config.id, { lastSlotCount: currentSlotCount });
+
+    // Solo alertar en transición 0→>0 (no en primera ejecución ni cuando ya había slots)
+    const newSlotsForConfig = transitionToAvailable ? allSlotsForConfig : [];
+    if (transitionToAvailable) {
+      totalNewSlots += currentSlotCount;
+      newSlotsForConfig.forEach(s => s.isNew = true);
+    }
+
+    console.log(`[CourtMonitor] Config "${config.name}": ${currentSlotCount} slots (prev: ${prevSlotCount === -1 ? 'primera vez' : prevSlotCount}) → alerta: ${transitionToAvailable}`);
 
     // Send alerts for new slots
     if (newSlotsForConfig.length > 0) {

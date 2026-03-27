@@ -1,0 +1,30 @@
+{
+  "query": "SELECT slotTime, COUNT(*) as count FROM court_availability_snapshots WHERE watchConfigId = 60007 GROUP BY slotTime ORDER BY slotTime LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT slotTime, COUNT(*) as count FROM court_availability_snapshots WHERE watchConfigId = 60007 GROUP BY slotTime ORDER BY slotTime LIMIT 30;",
+  "rows": [
+    {
+      "slotTime": "18:30",
+      "count": "650"
+    },
+    {
+      "slotTime": "19:00",
+      "count": "520"
+    },
+    {
+      "slotTime": "19:30",
+      "count": "459"
+    },
+    {
+      "slotTime": "20:00",
+      "count": "306"
+    },
+    {
+      "slotTime": "20:30",
+      "count": "153"
+    }
+  ],
+  "messages": [],
+  "stdout": "slotTime\tcount\n18:30\t650\n19:00\t520\n19:30\t459\n20:00\t306\n20:30\t153\n",
+  "stderr": "",
+  "execution_time_ms": 118
+}
