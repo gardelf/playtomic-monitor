@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, channel, isEnabled, config FROM alert_configs WHERE channel = 'telegram';\nSELECT id, name, chatId, isActive FROM telegram_contacts WHERE isActive = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, channel, isEnabled, config FROM alert_configs WHERE channel = 'telegram';\nSELECT id, name, chatId, isActive FROM telegram_contacts WHERE isActive = 1;",
+  "rows": [
+    {
+      "id": "1",
+      "channel": "telegram",
+      "isEnabled": "1",
+      "config": "{\"botToken\":\"8482772665:AAELgLVA1xmHFpr3euKZyw4Q4COTwrYvh5w\",\"chatId\":\"\"}"
+    },
+    {
+      "id": "id",
+      "channel": "name",
+      "isEnabled": "chatId",
+      "config": "isActive"
+    },
+    {
+      "id": "1",
+      "channel": "Fernando",
+      "isEnabled": "853099138",
+      "config": "1"
+    },
+    {
+      "id": "30001",
+      "channel": "Raul",
+      "isEnabled": "167218005",
+      "config": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tchannel\tisEnabled\tconfig\n1\ttelegram\t1\t{\"botToken\":\"8482772665:AAELgLVA1xmHFpr3euKZyw4Q4COTwrYvh5w\",\"chatId\":\"\"}\nid\tname\tchatId\tisActive\n1\tFernando\t853099138\t1\n30001\tRaul\t167218005\t1\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

@@ -584,6 +584,7 @@ let _courtSchedulerWatchdogInterval: ReturnType<typeof setInterval> | null = nul
 let _courtSchedulerIntervalMinutes = 5;
 let _courtSchedulerLastRunAt = 0; // timestamp ms del último ciclo completado
 let _cycleInProgress = false; // flag para evitar ciclos solapados
+let _stoppedManually = false; // true cuando el usuario para el scheduler explícitamente
 
 /**
  * Ejecuta un ciclo de forma segura y actualiza el timestamp del último ciclo.
@@ -605,6 +606,7 @@ async function safeCycle(): Promise<void> {
 
 export function startCourtScheduler(intervalMinutes = 5): void {
   stopCourtScheduler();
+  _stoppedManually = false; // el usuario arrancó el scheduler, limpiar el flag
   _courtSchedulerIntervalMinutes = intervalMinutes;
   const ms = intervalMinutes * 60 * 1000;
   console.log(`[CourtMonitor] Scheduler started: every ${intervalMinutes} minutes`);
@@ -627,7 +629,8 @@ export function startCourtScheduler(intervalMinutes = 5): void {
     clearInterval(_courtSchedulerWatchdogInterval);
   }
   _courtSchedulerWatchdogInterval = setInterval(() => {
-    if (!isCourtSchedulerRunning()) return; // scheduler detenido intencionalmente
+    if (!isCourtSchedulerRunning()) return; // scheduler detenido
+    if (_stoppedManually) return; // el usuario lo paró manualmente, no reiniciar
     if (_cycleInProgress) return; // hay un ciclo en curso, no es un atasco real
     const elapsed = Date.now() - _courtSchedulerLastRunAt;
     const threshold = 2 * ms;
@@ -642,11 +645,15 @@ export function startCourtScheduler(intervalMinutes = 5): void {
   }, 60_000); // cada minuto
 }
 
-export function stopCourtScheduler(): void {
+export function stopCourtScheduler(manual = false): void {
+  if (manual) {
+    _stoppedManually = true; // impedir que el watchdog o auto-arranque lo reactiven
+    console.log('[CourtMonitor] Scheduler stopped manually by user');
+  }
   if (_courtSchedulerInterval) {
     clearInterval(_courtSchedulerInterval);
     _courtSchedulerInterval = null;
-    console.log("[CourtMonitor] Scheduler stopped");
+    if (!manual) console.log("[CourtMonitor] Scheduler stopped");
     persistSchedulerStop().catch(console.error);
   }
   if (_courtSchedulerWatchdogInterval) {
@@ -678,8 +685,8 @@ export async function autoStartCourtSchedulerIfNeeded(): Promise<void> {
     if (cleaned > 0) {
       console.log(`[CourtMonitor] Cleaned up ${cleaned} orphaned running cycles from previous session`);
     }
-    const state = await getCourtSchedulerState();
-    if (state?.isRunning && !isCourtSchedulerRunning()) {
+  const state = await getCourtSchedulerState();
+    if (state?.isRunning && !_stoppedManually) {
       console.log(`[CourtMonitor] Auto-restarting scheduler (was running before restart, interval: ${state.intervalMinutes}min)`);
       startCourtScheduler(state.intervalMinutes);
     }

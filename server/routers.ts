@@ -273,7 +273,7 @@ const courtsRouter = router({
 
   /** Detener scheduler de pistas */
   stopScheduler: publicProcedure.mutation(() => {
-    stopCourtScheduler();
+    stopCourtScheduler(true); // manual=true: el usuario lo paró, no reiniciar con watchdog
     return { stopped: true };
   }),
 

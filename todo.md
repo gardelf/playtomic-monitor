@@ -157,3 +157,10 @@
 - [x] Añadir indicador visual: borde rojo + aviso si botToken está vacío, borde verde + ✅ si está configurado
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug: Botón "Detener" no para el scheduler
+- [x] Diagnosticar: el watchdog reactivaba el scheduler inmediatamente después de pararlo (sin distinguir parada manual vs. atasco)
+- [x] Corregir: añadir flag _stoppedManually; stopCourtScheduler(manual=true) impide que watchdog y auto-arranque lo reactiven
+- [x] El router stopScheduler ahora pasa manual=true
+- [x] Tests: 40/40 passing
+- [x] Checkpoint
