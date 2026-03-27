@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE '%telegram%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SHOW TABLES LIKE '%telegram%';",
+  "rows": [
+    {
+      "Tables_in_GEs7CeBHSsTEezTeL6en6Y (%telegram%)": "telegram_contacts"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_GEs7CeBHSsTEezTeL6en6Y (%telegram%)\ntelegram_contacts\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}

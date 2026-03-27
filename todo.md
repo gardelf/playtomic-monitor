@@ -150,3 +150,10 @@
 - [x] Mejora UX: botón guardar en ámbar cuando hay cambio pendiente, verde cuando está guardado
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug crítico: Alertas Telegram nunca se envían — botToken vacío en alert_configs
+- [x] Diagnosticar: el toggle de Telegram ocultaba los campos de bot token, guardando botToken="" al hacer clic en Guardar
+- [x] Corregir: los campos Bot Token y Chat ID ahora siempre son visibles (no dependen del toggle)
+- [x] Añadir indicador visual: borde rojo + aviso si botToken está vacío, borde verde + ✅ si está configurado
+- [x] Tests: 40/40 passing
+- [x] Checkpoint

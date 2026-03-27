@@ -1,0 +1,11 @@
+{
+  "query": "SELECT id, name, chatId, isActive FROM telegram_contacts;\nSELECT * FROM app_settings WHERE key LIKE '%telegram%' OR key LIKE '%bot%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, name, chatId, isActive FROM telegram_contacts;\nSELECT * FROM app_settings WHERE key LIKE '%telegram%' OR key LIKE '%bot%';",
+  "returncode": 1,
+  "logs": [
+    "id\tname\tchatId\tisActive",
+    "1\tFernando\t853099138\t1",
+    "30001\tRaul\t167218005\t1",
+    "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 36 near \"key LIKE '%telegram%' OR key LIKE '%bot%'\""
+  ]
+}

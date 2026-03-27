@@ -128,45 +128,51 @@ export default function Settings() {
             <Switch checked={tgEnabled} onCheckedChange={setTgEnabled} />
           </div>
 
-          {tgEnabled && (
-            <div className="space-y-3 pt-2 border-t border-border/50">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bot Token</Label>
-                <div className="relative">
-                  <Input
-                    type={showToken ? "text" : "password"}
-                    placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
-                    value={tgToken}
-                    onChange={(e) => setTgToken(e.target.value)}
-                    className="bg-input border-border text-foreground pr-10 font-mono text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground/70">
-                  Obtén tu token en <span className="text-primary">@BotFather</span> en Telegram
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chat ID</Label>
+          <div className="space-y-3 pt-2 border-t border-border/50">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bot Token</Label>
+              <div className="relative">
                 <Input
-                  type="text"
-                  placeholder="-1001234567890"
-                  value={tgChatId}
-                  onChange={(e) => setTgChatId(e.target.value)}
-                  className="bg-input border-border text-foreground font-mono text-xs"
+                  type={showToken ? "text" : "password"}
+                  placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                  value={tgToken}
+                  onChange={(e) => setTgToken(e.target.value)}
+                  className={`bg-input border-border text-foreground pr-10 font-mono text-xs ${
+                    tgToken ? "border-primary/40" : "border-destructive/40"
+                  }`}
                 />
-                <p className="text-xs text-muted-foreground/70">
-                  Tu ID personal o el ID de un grupo/canal. Usa <span className="text-primary">@userinfobot</span> para obtenerlo
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {!tgToken && (
+                <p className="text-xs text-destructive/80 font-medium">⚠️ Bot token requerido para enviar alertas</p>
+              )}
+              {tgToken && (
+                <p className="text-xs text-primary/80">✅ Bot token configurado</p>
+              )}
+              <p className="text-xs text-muted-foreground/70">
+                Obtén tu token en <span className="text-primary">@BotFather</span> en Telegram
+              </p>
             </div>
-          )}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chat ID por defecto <span className="text-muted-foreground/50 font-normal">(opcional si usas Contactos)</span></Label>
+              <Input
+                type="text"
+                placeholder="-1001234567890"
+                value={tgChatId}
+                onChange={(e) => setTgChatId(e.target.value)}
+                className="bg-input border-border text-foreground font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground/70">
+                Las alertas se envían a todos los <span className="text-primary">Contactos activos</span>. Este campo es opcional.
+              </p>
+            </div>
+          </div>
 
           <Button
             onClick={saveTelegram}

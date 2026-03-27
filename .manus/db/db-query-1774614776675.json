@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM alert_configs LIMIT 5;\nSELECT * FROM monitor_settings LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT * FROM alert_configs LIMIT 5;\nSELECT * FROM monitor_settings LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "channel": "telegram",
+      "isEnabled": "1",
+      "config": "{\"botToken\":\"\",\"chatId\":\"\"}",
+      "createdAt": "2026-03-26 11:13:22",
+      "updatedAt": "2026-03-27 11:42:44"
+    }
+  ],
+  "messages": [
+    "id\tintervalMinutes\tisRunning\tlastRunAt\tnextRunAt\ttotalChecks\ttotalAlertssSent\tcreatedAt\tupdatedAt",
+    "1\t1\t0\t2026-03-27 08:07:04\tNULL\t44\t0\t2026-03-26 11:07:12\t2026-03-27 08:07:39"
+  ],
+  "stdout": "id\tchannel\tisEnabled\tconfig\tcreatedAt\tupdatedAt\n1\ttelegram\t1\t{\"botToken\":\"\",\"chatId\":\"\"}\t2026-03-26 11:13:22\t2026-03-27 11:42:44\nid\tintervalMinutes\tisRunning\tlastRunAt\tnextRunAt\ttotalChecks\ttotalAlertssSent\tcreatedAt\tupdatedAt\n1\t1\t0\t2026-03-27 08:07:04\tNULL\t44\t0\t2026-03-26 11:07:12\t2026-03-27 08:07:39\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
