@@ -1,0 +1,118 @@
+{
+  "query": "SELECT \n  cws.id, cws.name, cws.startTimeMin, cws.startTimeMax, cws.isActive,\n  COUNT(cas.id) as total_snapshots,\n  MAX(cas.checkedAt) as last_checked\nFROM court_watch_configs cws\nLEFT JOIN court_availability_snapshots cas ON cas.watchConfigId = cws.id\nGROUP BY cws.id, cws.name, cws.startTimeMin, cws.startTimeMax, cws.isActive\nORDER BY cws.id DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT \n  cws.id, cws.name, cws.startTimeMin, cws.startTimeMax, cws.isActive,\n  COUNT(cas.id) as total_snapshots,\n  MAX(cas.checkedAt) as last_checked\nFROM court_watch_configs cws\nLEFT JOIN court_availability_snapshots cas ON cas.watchConfigId = cws.id\nGROUP BY cws.id, cws.name, cws.startTimeMin, cws.startTimeMax, cws.isActive\nORDER BY cws.id DESC;",
+  "rows": [
+    {
+      "id": "60006",
+      "name": "viernes",
+      "startTimeMin": "18:30",
+      "startTimeMax": "20:30",
+      "isActive": "1",
+      "total_snapshots": "666",
+      "last_checked": "2026-03-27 11:47:29"
+    },
+    {
+      "id": "60005",
+      "name": "sábado",
+      "startTimeMin": "10:00",
+      "startTimeMax": "22:30",
+      "isActive": "1",
+      "total_snapshots": "5823",
+      "last_checked": "2026-03-27 11:47:17"
+    },
+    {
+      "id": "60004",
+      "name": "sábado",
+      "startTimeMin": "10:00",
+      "startTimeMax": "11:00",
+      "isActive": "1",
+      "total_snapshots": "5341",
+      "last_checked": "2026-03-27 11:46:27"
+    },
+    {
+      "id": "60003",
+      "name": "sábado",
+      "startTimeMin": "08:30",
+      "startTimeMax": "09:30",
+      "isActive": "1",
+      "total_snapshots": "4950",
+      "last_checked": "2026-03-27 11:46:23"
+    },
+    {
+      "id": "60002",
+      "name": "sábado",
+      "startTimeMin": "10:30",
+      "startTimeMax": "11:00",
+      "isActive": "1",
+      "total_snapshots": "3437",
+      "last_checked": "2026-03-27 11:46:19"
+    },
+    {
+      "id": "60001",
+      "name": "Sábado",
+      "startTimeMin": "08:30",
+      "startTimeMax": "09:30",
+      "isActive": "1",
+      "total_snapshots": "3128",
+      "last_checked": "2026-03-27 11:46:17"
+    },
+    {
+      "id": "30005",
+      "name": "sábado",
+      "startTimeMin": "08:55",
+      "startTimeMax": "09:05",
+      "isActive": "1",
+      "total_snapshots": "1260",
+      "last_checked": "2026-03-27 11:46:15"
+    },
+    {
+      "id": "30004",
+      "name": "Proximo sábado",
+      "startTimeMin": "08:55",
+      "startTimeMax": "09:05",
+      "isActive": "1",
+      "total_snapshots": "1305",
+      "last_checked": "2026-03-27 11:46:14"
+    },
+    {
+      "id": "30003",
+      "name": "Proximo sábado",
+      "startTimeMin": "08:55",
+      "startTimeMax": "09:05",
+      "isActive": "1",
+      "total_snapshots": "1305",
+      "last_checked": "2026-03-27 11:46:13"
+    },
+    {
+      "id": "30002",
+      "name": "Proximo sábado",
+      "startTimeMin": "18:30",
+      "startTimeMax": "20:30",
+      "isActive": "1",
+      "total_snapshots": "5066",
+      "last_checked": "2026-03-27 11:46:12"
+    },
+    {
+      "id": "30001",
+      "name": "Proximo sábado",
+      "startTimeMin": "18:30",
+      "startTimeMax": "20:30",
+      "isActive": "1",
+      "total_snapshots": "5104",
+      "last_checked": "2026-03-27 11:46:10"
+    },
+    {
+      "id": "2",
+      "name": "Miércoles tarde",
+      "startTimeMin": "00:00",
+      "startTimeMax": "11:00",
+      "isActive": "1",
+      "total_snapshots": "69969",
+      "last_checked": "2026-03-27 11:47:28"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tstartTimeMin\tstartTimeMax\tisActive\ttotal_snapshots\tlast_checked\n60006\tviernes\t18:30\t20:30\t1\t666\t2026-03-27 11:47:29\n60005\tsábado\t10:00\t22:30\t1\t5823\t2026-03-27 11:47:17\n60004\tsábado\t10:00\t11:00\t1\t5341\t2026-03-27 11:46:27\n60003\tsábado\t08:30\t09:30\t1\t4950\t2026-03-27 11:46:23\n60002\tsábado\t10:30\t11:00\t1\t3437\t2026-03-27 11:46:19\n60001\tSábado\t08:30\t09:30\t1\t3128\t2026-03-27 11:46:17\n30005\tsábado\t08:55\t09:05\t1\t1260\t2026-03-27 11:46:15\n30004\tProximo sábado\t08:55\t09:05\t1\t1305\t2026-03-27 11:46:14\n30003\tProximo sábado\t08:55\t09:05\t1\t1305\t2026-03-27 11:46:13\n30002\tProximo sábado\t18:30\t20:30\t1\t5066\t2026-03-27 11:46:12\n30001\tProximo sábado\t18:30\t20:30\t1\t5104\t2026-03-27 11:46:10\n2\tMiércoles tarde\t00:00\t11:00\t1\t69969\t2026-03-27 11:47:28\n",
+  "stderr": "",
+  "execution_time_ms": 179
+}

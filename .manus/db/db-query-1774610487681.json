@@ -1,0 +1,16 @@
+{
+  "query": "SELECT \n  AVG(durationMs)/1000 as avg_seconds,\n  MIN(durationMs)/1000 as min_seconds,\n  MAX(durationMs)/1000 as max_seconds,\n  COUNT(*) as total_cycles\nFROM monitor_runs \nWHERE status = 'ok' AND durationMs IS NOT NULL\nORDER BY startedAt DESC\nLIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT \n  AVG(durationMs)/1000 as avg_seconds,\n  MIN(durationMs)/1000 as min_seconds,\n  MAX(durationMs)/1000 as max_seconds,\n  COUNT(*) as total_cycles\nFROM monitor_runs \nWHERE status = 'ok' AND durationMs IS NOT NULL\nORDER BY startedAt DESC\nLIMIT 1;",
+  "rows": [
+    {
+      "avg_seconds": "29.42424000",
+      "min_seconds": "-0.3600",
+      "max_seconds": "424.7610",
+      "total_cycles": "150"
+    }
+  ],
+  "messages": [],
+  "stdout": "avg_seconds\tmin_seconds\tmax_seconds\ttotal_cycles\n29.42424000\t-0.3600\t424.7610\t150\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

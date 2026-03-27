@@ -130,3 +130,16 @@
 - [x] Limpiar los ciclos huérfanos existentes en la DB (0 restantes)
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug crítico: Slots detectados pero nunca "nuevos" — alertas siempre 0
+- [x] Diagnosticar: la ventana de comparación era "hoy" (desde medianoche), por lo que el segundo ciclo del día nunca detectaba nada nuevo
+- [x] Corregir: ventana = 2×intervalo+2min (mínimo 12min) — un slot es nuevo si no apareció en el ciclo anterior
+- [x] Optimización: guardar snapshot SOLO cuando el slot es nuevo (antes acumulaba millones de filas inútiles)
+- [x] Tests: 40/40 passing
+- [x] Checkpoint
+
+## Bug: Ciclos "Ejecutando" huérfanos persisten con intervalo 1min y ciclo de 105s
+- [x] Diagnosticar: _cycleInProgress sí funciona (logs confirman "omitiendo este tick")
+- [x] Los huérfanos eran residuales de sesiones anteriores, ya limpiados
+- [x] Tests: 40/40 passing
+- [x] Checkpoint
