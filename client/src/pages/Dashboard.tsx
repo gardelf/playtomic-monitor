@@ -94,14 +94,23 @@ export default function Dashboard() {
     },
   });
 
-  const [intervalMinutes, setIntervalMinutes] = useState(5);
+  const [intervalMinutes, setIntervalMinutes] = useState<number | null>(null);
 
+  // Sincronizar con el servidor solo la primera vez (no sobreescribir selección del usuario)
   useEffect(() => {
-    if (courtStatus?.intervalMinutes) setIntervalMinutes(courtStatus.intervalMinutes);
+    if (courtStatus?.intervalMinutes && intervalMinutes === null) {
+      setIntervalMinutes(courtStatus.intervalMinutes);
+    }
   }, [courtStatus?.intervalMinutes]);
+
+  // Valor mostrado: lo que el usuario seleccionó, o el del servidor si aún no seleccionó nada
+  const selectedInterval = intervalMinutes ?? courtStatus?.intervalMinutes ?? 5;
+  const activeInterval = courtStatus?.intervalMinutes ?? 5;
+  const hasUnsavedChange = selectedInterval !== activeInterval;
 
   const updateInterval = trpc.courts.updateInterval.useMutation({
     onSuccess: (data) => {
+      setIntervalMinutes(data.intervalMinutes); // confirmar el nuevo valor
       utils.courts.schedulerStatusFull.invalidate();
       toast.success(`Intervalo actualizado a ${data.intervalMinutes} min${
         courtStatus?.running ? " — scheduler reiniciado" : ""
@@ -133,8 +142,10 @@ export default function Dashboard() {
                   onClick={() => setIntervalMinutes(v)}
                   className={cn(
                     "px-2 py-0.5 rounded text-xs font-medium transition-all",
-                    intervalMinutes === v
-                      ? "bg-primary/20 text-primary"
+                    selectedInterval === v && !hasUnsavedChange
+                      ? "bg-primary/20 text-primary ring-1 ring-primary/40" // activo en servidor
+                      : selectedInterval === v && hasUnsavedChange
+                      ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40" // pendiente de guardar
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -145,9 +156,10 @@ export default function Dashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => updateInterval.mutate({ intervalMinutes })}
-              disabled={updateInterval.isPending || intervalMinutes === (courtStatus?.intervalMinutes ?? 5)}
-              className="h-6 px-2 text-xs"
+              onClick={() => updateInterval.mutate({ intervalMinutes: selectedInterval })}
+              disabled={updateInterval.isPending || !hasUnsavedChange}
+              className={cn("h-6 px-2 text-xs", hasUnsavedChange && "text-amber-400 hover:text-amber-300")}
+              title={hasUnsavedChange ? `Guardar: cambiar de ${activeInterval}m a ${selectedInterval}m` : "Sin cambios pendientes"}
             >
               <Save className="w-3 h-3" />
             </Button>
@@ -175,7 +187,7 @@ export default function Dashboard() {
           ) : (
             <Button
               size="sm"
-              onClick={() => startMonitor.mutate({ intervalMinutes })}
+              onClick={() => startMonitor.mutate({ intervalMinutes: selectedInterval })}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Play className="w-4 h-4 mr-2" />

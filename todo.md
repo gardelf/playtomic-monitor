@@ -143,3 +143,10 @@
 - [x] Los huérfanos eran residuales de sesiones anteriores, ya limpiados
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug: Cambiar intervalo en Dashboard no tiene efecto — sigue ejecutando cada minuto
+- [x] Diagnosticar: el botón guardar estaba deshabilitado cuando selectedInterval === activeInterval (ambos 1min en memoria)
+- [x] Corregir: estado local inicializa a null, se sincroniza con servidor solo la primera vez, selectedInterval es el valor efectivo
+- [x] Mejora UX: botón guardar en ámbar cuando hay cambio pendiente, verde cuando está guardado
+- [x] Tests: 40/40 passing
+- [x] Checkpoint

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, isRunning, intervalMinutes, startedAt FROM court_scheduler_state LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, isRunning, intervalMinutes, startedAt FROM court_scheduler_state LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "isRunning": "1",
+      "intervalMinutes": "5",
+      "startedAt": "2026-03-27 11:52:41"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tisRunning\tintervalMinutes\tstartedAt\n1\t1\t5\t2026-03-27 11:52:41\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}
