@@ -48,9 +48,12 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
+  // Dev: apunta a server/public (donde vite build deposita el frontend)
+  // Prod (Railway): esbuild compila a dist/index.js; el build script copia
+  //   server/public -> dist/public, por lo que import.meta.dirname = dist/ -> dist/public
   const distPath =
     process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
+      ? path.resolve(import.meta.dirname, "../..", "server", "public")
       : path.resolve(import.meta.dirname, "public");
   if (!fs.existsSync(distPath)) {
     console.error(

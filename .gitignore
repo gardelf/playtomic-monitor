@@ -111,3 +111,7 @@ temp/
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
+
+# Frontend build output (generado por vite build)
+server/public/assets/
+server/public/index.html
