@@ -102,5 +102,6 @@
 - [x] Capa 2: createMonitorRun y finishMonitorRun usan withDbRetry; fallback sin DB en el ciclo
 - [x] Capa 3: Watchdog del scheduler (comprueba cada minuto si lleva >2×intervalo sin ejecutar)
 - [x] Migrar a mysql2/promise para mejor compatibilidad con Drizzle y async/await
-- [x] Tests: 31/31 passing
+- [x] Tests de resiliencia: 9 nuevos tests (withDbRetry, fallback sin DB, watchdog) → 40/40 passing
+- [x] Prueba en vivo: ECONNRESET → reintento exitoso, fallback -1, watchdog detecta atasco
 - [x] Checkpoint
