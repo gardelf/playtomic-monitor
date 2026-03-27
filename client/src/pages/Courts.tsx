@@ -313,21 +313,52 @@ function DatePicker({
   );
 }
 
+// ─── Time options ─────────────────────────────────────────────────────────────
+
+const TIME_OPTIONS: string[] = [];
+for (let h = 7; h <= 22; h++) {
+  for (const m of ["00", "30"]) {
+    TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${m}`);
+  }
+}
+
 // ─── New Watch Form ───────────────────────────────────────────────────────────
+
+const DEFAULT_FORM = {
+  name: "",
+  dayOfWeek: "3",
+  startTimeMin: "18:30",
+  startTimeMax: "20:30",
+  preferredDuration: "any",
+  weeksAhead: "4",
+};
 
 function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("Miércoles tarde");
-  const [dayOfWeek, setDayOfWeek] = useState("3");
-  const [startTimeMin, setStartTimeMin] = useState("18:30");
-  const [startTimeMax, setStartTimeMax] = useState("20:30");
-  const [preferredDuration, setPreferredDuration] = useState("any");
-  const [weeksAhead, setWeeksAhead] = useState("4");
+  const [name, setName] = useState(DEFAULT_FORM.name);
+  const [dayOfWeek, setDayOfWeek] = useState(DEFAULT_FORM.dayOfWeek);
+  const [startTimeMin, setStartTimeMin] = useState(DEFAULT_FORM.startTimeMin);
+  const [startTimeMax, setStartTimeMax] = useState(DEFAULT_FORM.startTimeMax);
+  const [preferredDuration, setPreferredDuration] = useState(DEFAULT_FORM.preferredDuration);
+  const [weeksAhead, setWeeksAhead] = useState(DEFAULT_FORM.weeksAhead);
+
+  // Resetear el formulario al cerrarlo
+  const handleOpenChange = (val: boolean) => {
+    setOpen(val);
+    if (!val) {
+      setName(DEFAULT_FORM.name);
+      setDayOfWeek(DEFAULT_FORM.dayOfWeek);
+      setStartTimeMin(DEFAULT_FORM.startTimeMin);
+      setStartTimeMax(DEFAULT_FORM.startTimeMax);
+      setPreferredDuration(DEFAULT_FORM.preferredDuration);
+      setWeeksAhead(DEFAULT_FORM.weeksAhead);
+    }
+  };
 
   const createMut = trpc.courts.createWatch.useMutation({
     onSuccess: () => {
       toast.success("Vigilancia creada correctamente");
-      setOpen(false);
+      handleOpenChange(false);
       onCreated();
     },
     onError: (err) => toast.error(`Error: ${err.message}`),
@@ -335,20 +366,22 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) { toast.error("El nombre es obligatorio"); return; }
+    if (startTimeMin >= startTimeMax) { toast.error("La hora mínima debe ser anterior a la máxima"); return; }
     createMut.mutate({
       clubId,
-      name,
+      name: name.trim(),
       dayOfWeek: parseInt(dayOfWeek),
       startTimeMin,
       startTimeMax,
-      preferredDuration: preferredDuration && preferredDuration !== "any" ? parseInt(preferredDuration) : undefined,
+      preferredDuration: preferredDuration !== "any" ? parseInt(preferredDuration) : undefined,
       sportId: "PADEL",
       weeksAhead: parseInt(weeksAhead),
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="w-4 h-4" />
@@ -367,6 +400,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Miércoles tarde"
               className="bg-background border-border"
+              required
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -399,24 +433,35 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Hora inicio (min)</Label>
-              <Input
-                value={startTimeMin}
-                onChange={(e) => setStartTimeMin(e.target.value)}
-                placeholder="18:30"
-                className="bg-background border-border"
-              />
+              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Hora desde</Label>
+              <Select value={startTimeMin} onValueChange={setStartTimeMin}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {TIME_OPTIONS.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Hora inicio (max)</Label>
-              <Input
-                value={startTimeMax}
-                onChange={(e) => setStartTimeMax(e.target.value)}
-                placeholder="20:30"
-                className="bg-background border-border"
-              />
+              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Hora hasta</Label>
+              <Select value={startTimeMax} onValueChange={setStartTimeMax}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {TIME_OPTIONS.filter((t) => t > startTimeMin).map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Busca pistas con hora de inicio entre <strong className="text-foreground">{startTimeMin}</strong> y <strong className="text-foreground">{startTimeMax}</strong>
+          </p>
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide">Duración preferida</Label>
             <Select value={preferredDuration} onValueChange={setPreferredDuration}>
@@ -433,7 +478,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
           </div>
           <Button
             type="submit"
-            disabled={createMut.isPending}
+            disabled={createMut.isPending || !name.trim()}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {createMut.isPending ? "Creando..." : "Crear vigilancia"}

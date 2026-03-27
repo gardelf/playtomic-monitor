@@ -113,3 +113,11 @@
 - [x] Sincronizar: guardar intervalo llama a courts.updateInterval que reinicia el scheduler si está activo
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug: Vigilancia de pistas no guarda los horarios
+- [x] Diagnosticar: los horarios sí se guardaban en DB, pero el formulario no reseteaba el estado al cerrarse (los valores anteriores persistían)
+- [x] Corregir: añadir handleOpenChange que resetea todos los campos al cerrar el diálogo
+- [x] Mejorar UX: reemplazar inputs de texto libre por Select con opciones cada 30 min (07:00–22:30), filtrado dinámico (hora hasta > hora desde)
+- [x] Añadir validación: nombre obligatorio, hora mínima < máxima
+- [x] Tests: 40/40 passing
+- [x] Checkpoint
