@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2";
 import {
   AlertConfig,
   AlertHistory,
@@ -25,17 +26,92 @@ import {
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
+
+function createPool(): mysql.Pool {
+  const pool = mysql.createPool({
+    uri: process.env.DATABASE_URL,
+    waitForConnections: true,
+    connectionLimit: 5,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 30000,
+    connectTimeout: 20000,
+  });
+  // Reconectar automáticamente ante errores de conexión en conexiones individuales
+  pool.on('connection', (conn) => {
+    conn.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED') {
+        console.warn('[Database] Connection lost, resetting pool:', err.code);
+        _db = null;
+        _pool = null;
+      }
+    });
+  });
+  return pool;
+}
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      if (!_pool) _pool = createPool();
+      _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn('[Database] Failed to connect:', error);
       _db = null;
+      _pool = null;
     }
   }
   return _db;
+}
+
+/** Fuerza reconexión en el próximo getDb() — llamar tras ECONNRESET */
+export function resetDbConnection(): void {
+  console.warn('[Database] Resetting connection pool...');
+  try {
+    if (_pool) {
+      _pool.end(); // sin callback — mysql2/promise usa Promise
+    }
+  } catch {}
+  _db = null;
+  _pool = null;
+}
+
+/**
+ * Wrapper que ejecuta una función con acceso a la DB y reintenta automáticamente
+ * si la conexión falla con ECONNRESET, PROTOCOL_CONNECTION_LOST o ECONNREFUSED.
+ * Esto garantiza que el scheduler nunca se detenga por un timeout de conexión MySQL.
+ */
+export async function withDbRetry<T>(fn: (db: NonNullable<Awaited<ReturnType<typeof getDb>>>) => Promise<T>, retries = 2): Promise<T> {
+  let lastError: unknown;
+
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const db = await getDb();
+      if (!db) throw new Error('DB not available');
+      return await fn(db);
+    } catch (err: any) {
+      lastError = err;
+      const code = err?.code ?? err?.cause?.code ?? '';
+      if (
+        code === 'ECONNRESET' ||
+        code === 'PROTOCOL_CONNECTION_LOST' ||
+        code === 'ECONNREFUSED' ||
+        err?.message?.includes('ECONNRESET') ||
+        err?.message?.includes('PROTOCOL_CONNECTION_LOST')
+      ) {
+        console.warn(`[Database] withDbRetry: connection broken (${code}), resetting pool (attempt ${i + 1}/${retries + 1})...`);
+        resetDbConnection();
+        // Espera pequeña antes de reconectar
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      // Error que no es de conexión → relanzar inmediatamente
+      throw err;
+    }
+  }
+
+  throw lastError;
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -383,25 +459,30 @@ export async function incrementContactAlerts(id: number): Promise<void> {
 
 /** Crea un registro de inicio de ciclo y devuelve su ID */
 export async function createMonitorRun(triggeredBy: "scheduler" | "manual"): Promise<number> {
-  const db = await getDb();
-  if (!db) return -1;
-  await db.insert(monitorRuns).values({
-    startedAt: new Date(),
-    status: "running",
-    triggeredBy,
-    slotsFound: 0,
-    newSlotsFound: 0,
-    alertsSent: 0,
-  });
-  // Drizzle/mysql2 no expone insertId de forma fiable; obtenemos el último ID insertado directamente
-  const rows = await db
-    .select({ id: monitorRuns.id })
-    .from(monitorRuns)
-    .orderBy(sql`${monitorRuns.id} DESC`)
-    .limit(1);
-  const id = rows[0]?.id ?? -1;
-  console.log(`[CourtMonitor] createMonitorRun → runId=${id}`);
-  return id;
+  try {
+    return await withDbRetry(async (db) => {
+      await db.insert(monitorRuns).values({
+        startedAt: new Date(),
+        status: "running",
+        triggeredBy,
+        slotsFound: 0,
+        newSlotsFound: 0,
+        alertsSent: 0,
+      });
+      // Drizzle/mysql2 no expone insertId de forma fiable; obtenemos el último ID insertado directamente
+      const rows = await db
+        .select({ id: monitorRuns.id })
+        .from(monitorRuns)
+        .orderBy(sql`${monitorRuns.id} DESC`)
+        .limit(1);
+      const id = rows[0]?.id ?? -1;
+      console.log(`[CourtMonitor] createMonitorRun → runId=${id}`);
+      return id;
+    });
+  } catch (err) {
+    console.warn('[CourtMonitor] createMonitorRun failed (DB unavailable), continuing without logging:', err instanceof Error ? err.message : err);
+    return -1;
+  }
 }
 
 /** Actualiza el registro al finalizar el ciclo */
@@ -418,27 +499,31 @@ export async function finishMonitorRun(
   }
 ): Promise<void> {
   console.log(`[CourtMonitor] finishMonitorRun → runId=${id}, status=${data.status}`);
-  const db = await getDb();
-  if (!db) { console.warn('[CourtMonitor] finishMonitorRun: no DB'); return; }
-  if (id < 0) { console.warn('[CourtMonitor] finishMonitorRun: invalid runId', id); return; }
-  const now = new Date();
-  const run = await db.select().from(monitorRuns).where(eq(monitorRuns.id, id)).limit(1);
-  const startedAt = run[0]?.startedAt ?? now;
-  const durationMs = now.getTime() - new Date(startedAt).getTime();
-  await db
-    .update(monitorRuns)
-    .set({
-      finishedAt: now,
-      durationMs,
-      slotsFound: data.slotsFound,
-      newSlotsFound: data.newSlotsFound,
-      alertsSent: data.alertsSent,
-      datesChecked: JSON.stringify(data.datesChecked),
-      status: data.status,
-      errorMessage: data.errorMessage ?? null,
-      notes: data.notes ?? null,
-    })
-    .where(eq(monitorRuns.id, id));
+  if (id < 0) { console.warn('[CourtMonitor] finishMonitorRun: invalid runId, skipping'); return; }
+  try {
+    await withDbRetry(async (db) => {
+      const now = new Date();
+      const run = await db.select().from(monitorRuns).where(eq(monitorRuns.id, id)).limit(1);
+      const startedAt = run[0]?.startedAt ?? now;
+      const durationMs = now.getTime() - new Date(startedAt).getTime();
+      await db
+        .update(monitorRuns)
+        .set({
+          finishedAt: now,
+          durationMs,
+          slotsFound: data.slotsFound,
+          newSlotsFound: data.newSlotsFound,
+          alertsSent: data.alertsSent,
+          datesChecked: JSON.stringify(data.datesChecked),
+          status: data.status,
+          errorMessage: data.errorMessage ?? null,
+          notes: data.notes ?? null,
+        })
+        .where(eq(monitorRuns.id, id));
+    });
+  } catch (err) {
+    console.warn('[CourtMonitor] finishMonitorRun failed (DB unavailable), continuing:', err instanceof Error ? err.message : err);
+  }
 }
 
 /** Obtiene los últimos N registros de actividad */

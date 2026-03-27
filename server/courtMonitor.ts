@@ -24,6 +24,7 @@ import {
   insertAlert,
   persistSchedulerStart,
   persistSchedulerStop,
+  resetDbConnection,
 } from "./db";
 
 const PLAYTOMIC_API = "https://api.playtomic.io/v1";
@@ -340,12 +341,18 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
   alertsSent: number;
 }> {
   console.log("[CourtMonitor] Starting court monitor cycle...");
+
+  // FALLBACK SIN DB: createMonitorRun ya captura errores internamente y devuelve -1 si la DB no está disponible.
+  // El ciclo SIEMPRE continúa aunque la DB esté caída — Playtomic + Telegram siguen funcionando.
   const runId = await createMonitorRun(triggeredBy);
+  if (runId < 0) {
+    console.warn('[CourtMonitor] DB unavailable for logging, but cycle will continue (Playtomic + Telegram still active)');
+  }
 
   try {
   const db = await getDb();
   if (!db) {
-    await finishMonitorRun(runId, { slotsFound: 0, newSlotsFound: 0, alertsSent: 0, datesChecked: [], status: "error", errorMessage: "DB not available" });
+    console.warn('[CourtMonitor] DB unavailable for court watch configs, skipping cycle');
     return { checked: 0, slotsFound: 0, newSlots: 0, alertsSent: 0 };
   }
 
@@ -568,7 +575,18 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
 // ─── Scheduler ────────────────────────────────────────────────────────────────
 
 let _courtSchedulerInterval: ReturnType<typeof setInterval> | null = null;
+let _courtSchedulerWatchdogInterval: ReturnType<typeof setInterval> | null = null;
 let _courtSchedulerIntervalMinutes = 5;
+let _courtSchedulerLastRunAt = 0; // timestamp ms del último ciclo completado
+
+/**
+ * Ejecuta un ciclo de forma segura y actualiza el timestamp del último ciclo.
+ * Esto es lo que el watchdog usa para detectar si el scheduler está atascado.
+ */
+async function safeCycle(): Promise<void> {
+  _courtSchedulerLastRunAt = Date.now();
+  await runCourtMonitorCycle("scheduler");
+}
 
 export function startCourtScheduler(intervalMinutes = 5): void {
   stopCourtScheduler();
@@ -577,13 +595,33 @@ export function startCourtScheduler(intervalMinutes = 5): void {
   console.log(`[CourtMonitor] Scheduler started: every ${intervalMinutes} minutes`);
   // Persistir en DB para sobrevivir reinicios
   persistSchedulerStart(intervalMinutes).catch(console.error);
+
+  // Marcar el tiempo de inicio para que el watchdog no dispare inmediatamente
+  _courtSchedulerLastRunAt = Date.now();
+
   _courtSchedulerInterval = setInterval(async () => {
     try {
-      await runCourtMonitorCycle("scheduler");
+      await safeCycle();
     } catch (err) {
       console.error("[CourtMonitor] Scheduler error:", err);
     }
   }, ms);
+
+  // Watchdog: comprueba cada minuto si el scheduler lleva más de 2×intervalo sin ejecutar
+  if (_courtSchedulerWatchdogInterval) {
+    clearInterval(_courtSchedulerWatchdogInterval);
+  }
+  _courtSchedulerWatchdogInterval = setInterval(() => {
+    if (!isCourtSchedulerRunning()) return; // scheduler detenido intencionalmente
+    const elapsed = Date.now() - _courtSchedulerLastRunAt;
+    const threshold = 2 * ms;
+    if (elapsed > threshold) {
+      console.warn(`[CourtMonitor] Watchdog: scheduler stalled (${Math.round(elapsed / 60000)}min without a cycle). Restarting...`);
+      // Resetear la conexión a la DB por si el problema es ECONNRESET
+      try { resetDbConnection(); } catch {}
+      startCourtScheduler(_courtSchedulerIntervalMinutes);
+    }
+  }, 60_000); // cada minuto
 }
 
 export function stopCourtScheduler(): void {
@@ -593,6 +631,10 @@ export function stopCourtScheduler(): void {
     console.log("[CourtMonitor] Scheduler stopped");
     persistSchedulerStop().catch(console.error);
   }
+  if (_courtSchedulerWatchdogInterval) {
+    clearInterval(_courtSchedulerWatchdogInterval);
+    _courtSchedulerWatchdogInterval = null;
+  }
 }
 
 export function isCourtSchedulerRunning(): boolean {
@@ -601,6 +643,10 @@ export function isCourtSchedulerRunning(): boolean {
 
 export function getCourtSchedulerIntervalMinutes(): number {
   return _courtSchedulerIntervalMinutes;
+}
+
+export function getCourtSchedulerLastRunAt(): number {
+  return _courtSchedulerLastRunAt;
 }
 
 /**

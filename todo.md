@@ -95,3 +95,12 @@
 - [x] Limpiar registros históricos atascados en 'running'
 - [x] Tests: 31/31 passing
 - [x] Checkpoint
+
+## Bug crítico: Scheduler se detiene por ECONNRESET en MySQL
+- [x] Diagnosticar: causa raíz es ECONNRESET en conexión MySQL inactiva tras horas sin uso
+- [x] Capa 1: wrapper withDbRetry que detecta ECONNRESET, resetea el pool y reintenta automáticamente
+- [x] Capa 2: createMonitorRun y finishMonitorRun usan withDbRetry; fallback sin DB en el ciclo
+- [x] Capa 3: Watchdog del scheduler (comprueba cada minuto si lleva >2×intervalo sin ejecutar)
+- [x] Migrar a mysql2/promise para mejor compatibilidad con Drizzle y async/await
+- [x] Tests: 31/31 passing
+- [x] Checkpoint
