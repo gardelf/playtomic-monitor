@@ -105,3 +105,11 @@
 - [x] Tests de resiliencia: 9 nuevos tests (withDbRetry, fallback sin DB, watchdog) → 40/40 passing
 - [x] Prueba en vivo: ECONNRESET → reintento exitoso, fallback -1, watchdog detecta atasco
 - [x] Checkpoint
+
+## Bug UX: Incoherencia entre controles del scheduler
+- [x] Diagnosticar duplicidad: Configuración controlaba el scheduler de Cursos (obsoleto), Dashboard el de Pistas (activo)
+- [x] Eliminar el panel "Control del Monitor" de Configuración (queda solo en Dashboard)
+- [x] Mover el selector de intervalo (1/2/5/10/15/30m) al header del Dashboard junto a los botones
+- [x] Sincronizar: guardar intervalo llama a courts.updateInterval que reinicia el scheduler si está activo
+- [x] Tests: 40/40 passing
+- [x] Checkpoint

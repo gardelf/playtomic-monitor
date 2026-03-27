@@ -4,20 +4,14 @@ import { toast } from "sonner";
 import {
   Bell,
   CheckCircle2,
-  Clock,
   Eye,
   EyeOff,
-  Play,
   Save,
-  Square,
-  TestTube,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 
 function SectionCard({ title, icon: Icon, children }: {
   title: string;
@@ -40,7 +34,6 @@ function SectionCard({ title, icon: Icon, children }: {
 export default function Settings() {
   const utils = trpc.useUtils();
   const { data: configs } = trpc.alerts.configs.useQuery();
-  const { data: status } = trpc.monitor.status.useQuery(undefined, { refetchInterval: 10000 });
 
   // Telegram state
   const [tgEnabled, setTgEnabled] = useState(false);
@@ -56,9 +49,6 @@ export default function Settings() {
   const [smtpPass, setSmtpPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [toEmail, setToEmail] = useState("");
-
-  // Monitor state
-  const [intervalMinutes, setIntervalMinutes] = useState(5);
 
   // Load configs
   useEffect(() => {
@@ -87,45 +77,12 @@ export default function Settings() {
     }
   }, [configs]);
 
-  useEffect(() => {
-    if (status?.intervalMinutes) setIntervalMinutes(status.intervalMinutes);
-  }, [status?.intervalMinutes]);
-
   const saveConfig = trpc.alerts.saveConfig.useMutation({
     onSuccess: () => {
       utils.alerts.configs.invalidate();
       toast.success("Configuración guardada");
     },
     onError: () => toast.error("Error al guardar"),
-  });
-
-  const startMonitor = trpc.monitor.start.useMutation({
-    onSuccess: (data) => {
-      utils.monitor.status.invalidate();
-      toast.success(`Monitor iniciado (cada ${data.intervalMinutes} min)`);
-    },
-  });
-
-  const stopMonitor = trpc.monitor.stop.useMutation({
-    onSuccess: () => {
-      utils.monitor.status.invalidate();
-      toast.info("Monitor detenido");
-    },
-  });
-
-  const updateInterval = trpc.monitor.updateInterval.useMutation({
-    onSuccess: () => {
-      utils.monitor.status.invalidate();
-      toast.success("Intervalo actualizado");
-    },
-  });
-
-  const runNow = trpc.monitor.runNow.useMutation({
-    onSuccess: (data) => {
-      utils.monitor.status.invalidate();
-      toast.success(`Comprobación completada: ${data.checked} cursos`);
-    },
-    onError: () => toast.error("Error al ejecutar comprobación"),
   });
 
   const saveTelegram = () => {
@@ -155,104 +112,10 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground font-display">Configuración</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Gestiona los canales de alerta y el intervalo de monitorización</p>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          Gestiona los canales de alerta. El control del monitor (intervalo, iniciar/detener) está en el Dashboard.
+        </p>
       </div>
-
-      {/* Monitor control */}
-      <SectionCard title="Control del Monitor" icon={Zap}>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border/50">
-            <div>
-              <p className="text-sm font-medium text-foreground">Estado actual</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {status?.schedulerRunning ? `Activo · comprueba cada ${status.intervalMinutes} min` : "Inactivo"}
-              </p>
-            </div>
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border",
-              status?.schedulerRunning
-                ? "bg-primary/15 text-primary border-primary/25"
-                : "bg-muted text-muted-foreground border-border"
-            )}>
-              <span className={cn("w-2 h-2 rounded-full", status?.schedulerRunning ? "bg-primary animate-pulse" : "bg-muted-foreground")} />
-              {status?.schedulerRunning ? "Activo" : "Inactivo"}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">Intervalo de comprobación (minutos)</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={1}
-                max={60}
-                value={intervalMinutes}
-                onChange={(e) => setIntervalMinutes(parseInt(e.target.value) || 5)}
-                className="w-24 bg-input border-border text-foreground"
-              />
-              <div className="flex gap-2">
-                {[1, 2, 5, 10, 15, 30].map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setIntervalMinutes(v)}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                      intervalMinutes === v
-                        ? "bg-primary/20 text-primary border-primary/30"
-                        : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-                    )}
-                  >
-                    {v}m
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => updateInterval.mutate({ intervalMinutes })}
-              disabled={updateInterval.isPending}
-              className="border-border bg-transparent hover:bg-accent"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Guardar intervalo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => runNow.mutate()}
-              disabled={runNow.isPending}
-              className="border-border bg-transparent hover:bg-accent"
-            >
-              <TestTube className={cn("w-4 h-4 mr-2", runNow.isPending && "animate-spin")} />
-              Ejecutar ahora
-            </Button>
-            {status?.schedulerRunning ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => stopMonitor.mutate()}
-                className="border-destructive/40 text-destructive hover:bg-destructive/10"
-              >
-                <Square className="w-4 h-4 mr-2" />
-                Detener monitor
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => startMonitor.mutate({ intervalMinutes })}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Iniciar monitor
-              </Button>
-            )}
-          </div>
-        </div>
-      </SectionCard>
 
       {/* Telegram */}
       <SectionCard title="Alertas por Telegram" icon={Bell}>
@@ -417,7 +280,7 @@ export default function Settings() {
         <div className="space-y-2 text-xs text-muted-foreground">
           <p><span className="text-foreground font-medium">Telegram:</span> Crea un bot con @BotFather, obtén el token y añade el bot a tu chat. El Chat ID lo obtienes con @userinfobot o @RawDataBot.</p>
           <p><span className="text-foreground font-medium">Gmail:</span> Activa la verificación en 2 pasos y genera una "Contraseña de aplicación" en tu cuenta de Google. Usa smtp.gmail.com:587.</p>
-          <p><span className="text-foreground font-medium">Monitor:</span> Se recomienda un intervalo de 2-5 minutos. Intervalos muy cortos pueden resultar en bloqueos temporales por parte de Playtomic.</p>
+          <p><span className="text-foreground font-medium">Monitor:</span> El intervalo y los controles de inicio/parada están en el <span className="text-primary">Dashboard</span>. Se recomienda un intervalo de 2-5 minutos.</p>
         </div>
       </div>
     </div>

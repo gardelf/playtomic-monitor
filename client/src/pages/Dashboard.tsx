@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Bell,
@@ -7,6 +7,7 @@ import {
   MapPin,
   Play,
   RefreshCw,
+  Save,
   Square,
   TrendingUp,
   Zap,
@@ -93,6 +94,22 @@ export default function Dashboard() {
     },
   });
 
+  const [intervalMinutes, setIntervalMinutes] = useState(5);
+
+  useEffect(() => {
+    if (courtStatus?.intervalMinutes) setIntervalMinutes(courtStatus.intervalMinutes);
+  }, [courtStatus?.intervalMinutes]);
+
+  const updateInterval = trpc.courts.updateInterval.useMutation({
+    onSuccess: (data) => {
+      utils.courts.schedulerStatusFull.invalidate();
+      toast.success(`Intervalo actualizado a ${data.intervalMinutes} min${
+        courtStatus?.running ? " — scheduler reiniciado" : ""
+      }`);
+    },
+    onError: () => toast.error("Error al actualizar el intervalo"),
+  });
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -105,7 +122,36 @@ export default function Dashboard() {
               : "Sin comprobaciones aún"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Selector de intervalo */}
+          <div className="flex items-center gap-1.5 bg-card border border-border rounded-lg px-2 py-1">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <div className="flex gap-1">
+              {[1, 2, 5, 10, 15, 30].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setIntervalMinutes(v)}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs font-medium transition-all",
+                    intervalMinutes === v
+                      ? "bg-primary/20 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {v}m
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateInterval.mutate({ intervalMinutes })}
+              disabled={updateInterval.isPending || intervalMinutes === (courtStatus?.intervalMinutes ?? 5)}
+              className="h-6 px-2 text-xs"
+            >
+              <Save className="w-3 h-3" />
+            </Button>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -129,7 +175,7 @@ export default function Dashboard() {
           ) : (
             <Button
               size="sm"
-              onClick={() => startMonitor.mutate({ intervalMinutes: courtStatus?.intervalMinutes ?? 5 })}
+              onClick={() => startMonitor.mutate({ intervalMinutes })}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Play className="w-4 h-4 mr-2" />

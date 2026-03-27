@@ -342,6 +342,16 @@ const courtsRouter = router({
     running: isCourtSchedulerRunning(),
     intervalMinutes: getCourtSchedulerIntervalMinutes(),
   })),
+
+  /** Actualizar intervalo del scheduler (lo reinicia si está activo) */
+  updateInterval: publicProcedure
+    .input(z.object({ intervalMinutes: z.number().min(1).max(60) }))
+    .mutation(({ input }) => {
+      if (isCourtSchedulerRunning()) {
+        startCourtScheduler(input.intervalMinutes);
+      }
+      return { updated: true, intervalMinutes: input.intervalMinutes };
+    }),
 });
 
 // ─── Telegram Contacts Router ─────────────────────────────────────────────────
