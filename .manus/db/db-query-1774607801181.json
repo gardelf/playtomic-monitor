@@ -1,0 +1,130 @@
+{
+  "query": "SELECT id, startedAt, triggeredBy, status FROM monitor_runs WHERE status = 'running' ORDER BY startedAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT id, startedAt, triggeredBy, status FROM monitor_runs WHERE status = 'running' ORDER BY startedAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "150024",
+      "startedAt": "2026-03-27 10:36:35",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150022",
+      "startedAt": "2026-03-27 10:35:35",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150021",
+      "startedAt": "2026-03-27 10:33:32",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150020",
+      "startedAt": "2026-03-27 10:32:31",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150019",
+      "startedAt": "2026-03-27 10:31:30",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150015",
+      "startedAt": "2026-03-27 10:26:25",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150014",
+      "startedAt": "2026-03-27 10:25:25",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150013",
+      "startedAt": "2026-03-27 10:24:24",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150012",
+      "startedAt": "2026-03-27 10:23:21",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150009",
+      "startedAt": "2026-03-27 10:20:20",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150008",
+      "startedAt": "2026-03-27 10:19:20",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150007",
+      "startedAt": "2026-03-27 10:18:18",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150006",
+      "startedAt": "2026-03-27 10:17:18",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150005",
+      "startedAt": "2026-03-27 10:16:18",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150004",
+      "startedAt": "2026-03-27 10:15:18",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150003",
+      "startedAt": "2026-03-27 10:14:17",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "150002",
+      "startedAt": "2026-03-27 10:13:17",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "120048",
+      "startedAt": "2026-03-27 08:21:19",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "60023",
+      "startedAt": "2026-03-26 20:29:39",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    },
+    {
+      "id": "60020",
+      "startedAt": "2026-03-26 20:24:39",
+      "triggeredBy": "scheduler",
+      "status": "running"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstartedAt\ttriggeredBy\tstatus\n150024\t2026-03-27 10:36:35\tscheduler\trunning\n150022\t2026-03-27 10:35:35\tscheduler\trunning\n150021\t2026-03-27 10:33:32\tscheduler\trunning\n150020\t2026-03-27 10:32:31\tscheduler\trunning\n150019\t2026-03-27 10:31:30\tscheduler\trunning\n150015\t2026-03-27 10:26:25\tscheduler\trunning\n150014\t2026-03-27 10:25:25\tscheduler\trunning\n150013\t2026-03-27 10:24:24\tscheduler\trunning\n150012\t2026-03-27 10:23:21\tscheduler\trunning\n150009\t2026-03-27 10:20:20\tscheduler\trunning\n150008\t2026-03-27 10:19:20\tscheduler\trunning\n150007\t2026-03-27 10:18:18\tscheduler\trunning\n150006\t2026-03-27 10:17:18\tscheduler\trunning\n150005\t2026-03-27 10:16:18\tscheduler\trunning\n150004\t2026-03-27 10:15:18\tscheduler\trunning\n150003\t2026-03-27 10:14:17\tscheduler\trunning\n150002\t2026-03-27 10:13:17\tscheduler\trunning\n120048\t2026-03-27 08:21:19\tscheduler\trunning\n60023\t2026-03-26 20:29:39\tscheduler\trunning\n60020\t2026-03-26 20:24:39\tscheduler\trunning\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

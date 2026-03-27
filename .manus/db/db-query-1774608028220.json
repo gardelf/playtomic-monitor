@@ -1,0 +1,13 @@
+{
+  "query": "UPDATE monitor_runs SET status = 'error', finishedAt = NOW(), errorMessage = 'Ciclo interrumpido (servidor reiniciado o watchdog)', notes = 'Marcado como error automáticamente al detectar ciclo huérfano' WHERE status = 'running' AND startedAt < DATE_SUB(NOW(), INTERVAL 10 MINUTE);\n\nSELECT COUNT(*) as orphans_remaining FROM monitor_runs WHERE status = 'running';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute UPDATE monitor_runs SET status = 'error', finishedAt = NOW(), errorMessage = 'Ciclo interrumpido (servidor reiniciado o watchdog)', notes = 'Marcado como error automáticamente al detectar ciclo huérfano' WHERE status = 'running' AND startedAt < DATE_SUB(NOW(), INTERVAL 10 MINUTE);\n\nSELECT COUNT(*) as orphans_remaining FROM monitor_runs WHERE status = 'running';",
+  "rows": [
+    {
+      "orphans_remaining": "8"
+    }
+  ],
+  "messages": [],
+  "stdout": "orphans_remaining\n8\n",
+  "stderr": "",
+  "execution_time_ms": 68
+}

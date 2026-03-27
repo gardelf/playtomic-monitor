@@ -15,6 +15,7 @@ import {
   InsertCourtWatchConfig,
 } from "../drizzle/schema";
 import {
+  cleanupOrphanedRuns,
   createMonitorRun,
   finishMonitorRun,
   getActiveTelegramContacts,
@@ -578,14 +579,24 @@ let _courtSchedulerInterval: ReturnType<typeof setInterval> | null = null;
 let _courtSchedulerWatchdogInterval: ReturnType<typeof setInterval> | null = null;
 let _courtSchedulerIntervalMinutes = 5;
 let _courtSchedulerLastRunAt = 0; // timestamp ms del último ciclo completado
+let _cycleInProgress = false; // flag para evitar ciclos solapados
 
 /**
  * Ejecuta un ciclo de forma segura y actualiza el timestamp del último ciclo.
- * Esto es lo que el watchdog usa para detectar si el scheduler está atascado.
+ * Evita solapamiento: si hay un ciclo en curso, lo omite.
  */
 async function safeCycle(): Promise<void> {
+  if (_cycleInProgress) {
+    console.warn('[CourtMonitor] Ciclo anterior todavía en curso, omitiendo este tick');
+    return;
+  }
+  _cycleInProgress = true;
   _courtSchedulerLastRunAt = Date.now();
-  await runCourtMonitorCycle("scheduler");
+  try {
+    await runCourtMonitorCycle("scheduler");
+  } finally {
+    _cycleInProgress = false;
+  }
 }
 
 export function startCourtScheduler(intervalMinutes = 5): void {
@@ -613,10 +624,13 @@ export function startCourtScheduler(intervalMinutes = 5): void {
   }
   _courtSchedulerWatchdogInterval = setInterval(() => {
     if (!isCourtSchedulerRunning()) return; // scheduler detenido intencionalmente
+    if (_cycleInProgress) return; // hay un ciclo en curso, no es un atasco real
     const elapsed = Date.now() - _courtSchedulerLastRunAt;
     const threshold = 2 * ms;
     if (elapsed > threshold) {
       console.warn(`[CourtMonitor] Watchdog: scheduler stalled (${Math.round(elapsed / 60000)}min without a cycle). Restarting...`);
+      // Limpiar ciclos huérfanos antes de reiniciar
+      cleanupOrphanedRuns(15).catch(console.error);
       // Resetear la conexión a la DB por si el problema es ECONNRESET
       try { resetDbConnection(); } catch {}
       startCourtScheduler(_courtSchedulerIntervalMinutes);
@@ -655,6 +669,11 @@ export function getCourtSchedulerLastRunAt(): number {
  */
 export async function autoStartCourtSchedulerIfNeeded(): Promise<void> {
   try {
+    // Limpiar ciclos huérfanos de sesiones anteriores antes de arrancar
+    const cleaned = await cleanupOrphanedRuns(15);
+    if (cleaned > 0) {
+      console.log(`[CourtMonitor] Cleaned up ${cleaned} orphaned running cycles from previous session`);
+    }
     const state = await getCourtSchedulerState();
     if (state?.isRunning && !isCourtSchedulerRunning()) {
       console.log(`[CourtMonitor] Auto-restarting scheduler (was running before restart, interval: ${state.intervalMinutes}min)`);

@@ -585,6 +585,29 @@ export async function persistSchedulerStart(intervalMinutes: number) {
     .where(eq(courtSchedulerState.id, state.id));
 }
 
+/** Marca como 'error' todos los ciclos que llevan más de maxAgeMinutes en estado 'running' (huérfanos) */
+export async function cleanupOrphanedRuns(maxAgeMinutes = 15): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+  const orphans = await db
+    .select({ id: monitorRuns.id })
+    .from(monitorRuns)
+    .where(and(eq(monitorRuns.status, 'running'), sql`${monitorRuns.startedAt} < ${cutoff}`));
+  if (orphans.length === 0) return 0;
+  await db
+    .update(monitorRuns)
+    .set({
+      status: 'error',
+      finishedAt: new Date(),
+      errorMessage: 'Ciclo interrumpido (servidor reiniciado o watchdog)',
+      notes: 'Marcado como error automáticamente al detectar ciclo huérfano',
+    })
+    .where(and(eq(monitorRuns.status, 'running'), sql`${monitorRuns.startedAt} < ${cutoff}`));
+  console.log(`[Database] Cleaned up ${orphans.length} orphaned running cycles`);
+  return orphans.length;
+}
+
 /** Persiste en DB que el scheduler se ha detenido */
 export async function persistSchedulerStop() {
   const db = await getDb();

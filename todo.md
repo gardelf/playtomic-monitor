@@ -121,3 +121,12 @@
 - [x] Añadir validación: nombre obligatorio, hora mínima < máxima
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug: Ciclos atascados en estado "Ejecutando" (huérfanos)
+- [x] Diagnosticar: el watchdog reiniciaba el scheduler interrumpiendo ciclos en curso (runId sin finishMonitorRun)
+- [x] Correción 1: flag _cycleInProgress evita ciclos solapados y el watchdog no dispara si hay ciclo en curso
+- [x] Corrección 2: cleanupOrphanedRuns() marca como 'error' los ciclos running >15min al arrancar
+- [x] Corrección 3: el watchdog llama a cleanupOrphanedRuns() antes de reiniciar el scheduler
+- [x] Limpiar los ciclos huérfanos existentes en la DB (0 restantes)
+- [x] Tests: 40/40 passing
+- [x] Checkpoint
