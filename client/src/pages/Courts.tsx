@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,8 @@ import {
   Timer,
   Euro,
   X,
+  Search,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +112,7 @@ function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slo
     return (
       <div className="text-center py-8 border border-dashed border-border rounded-lg">
         <CalendarIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-muted-foreground text-sm">Sin pistas disponibles en el rango 18:30–20:30</p>
+        <p className="text-muted-foreground text-sm">Sin pistas disponibles en el rango horario</p>
       </div>
     );
   }
@@ -157,14 +159,18 @@ function SlotList({ byCourt, totalSlots }: { byCourt: { name: string; slots: Slo
 function DayAvailabilityCard({
   tenantId,
   date,
+  startTimeMin,
+  startTimeMax,
   onRemove,
 }: {
   tenantId: string;
   date: string;
+  startTimeMin: string;
+  startTimeMax: string;
   onRemove: () => void;
 }) {
   const { data, isLoading, refetch } = trpc.courts.checkDate.useQuery(
-    { tenantId, date, startTimeMin: "18:30", startTimeMax: "20:30" },
+    { tenantId, date, startTimeMin, startTimeMax },
     { enabled: !!date, staleTime: 120000 }
   );
 
@@ -179,10 +185,9 @@ function DayAvailabilityCard({
             <CardTitle className="text-sm text-foreground capitalize truncate">
               {formatDateFull(date)}
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">18:30–20:30</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{startTimeMin}–{startTimeMax}</p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* availability badge */}
             {!isLoading && (
               <span
                 className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
@@ -239,7 +244,6 @@ function DatePicker({
 
   const handleSelect = (days: Date[] | undefined) => {
     if (!days) return;
-    // Keep only the last MAX_DAYS selected
     const sorted = [...days].sort((a, b) => a.getTime() - b.getTime());
     const limited = sorted.slice(-MAX_DAYS);
     onChange(limited.map(toDateStr));
@@ -275,7 +279,7 @@ function DatePicker({
                   {formatDateShort(d)}
                   <button
                     onClick={() => onChange(selectedDates.filter((x) => x !== d))}
-                    className="hover:text-destructive transition-colors"
+                    className="hover:text-destructive"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -288,14 +292,8 @@ function DatePicker({
           mode="multiple"
           selected={selected}
           onSelect={handleSelect}
-          disabled={{ before: today }}
-          formatters={{
-            formatWeekdayName: (day) =>
-              ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"][day.getDay()]!,
-            formatMonthDropdown: (date) =>
-              date.toLocaleString("es-ES", { month: "short" }),
-          }}
-          className="p-3"
+          disabled={(d) => d < today}
+          className="rounded-none"
         />
         <div className="p-3 border-t border-border flex justify-between items-center">
           <button
@@ -322,10 +320,182 @@ for (let h = 7; h <= 22; h++) {
   }
 }
 
+// ─── Club Search Dialog ───────────────────────────────────────────────────────
+
+type ClubSearchResult = {
+  tenantId: string;
+  tenantUid?: string;
+  name: string;
+  city?: string;
+  country?: string;
+  imageUrl?: string;
+  address?: string;
+};
+
+function AddClubDialog({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: results, isLoading: searching } = trpc.courts.searchClubs.useQuery(
+    { query: debouncedQuery },
+    { enabled: debouncedQuery.length >= 2 }
+  );
+
+  const { data: monitoredClubs, refetch: refetchMonitored } = trpc.courts.monitoredClubs.useQuery();
+
+  const addClubMut = trpc.courts.addClub.useMutation({
+    onSuccess: () => {
+      toast.success("Club añadido correctamente");
+      refetchMonitored();
+      onAdded();
+    },
+    onError: (err) => toast.error(`Error: ${err.message}`),
+  });
+
+  const removeClubMut = trpc.courts.removeClub.useMutation({
+    onSuccess: () => {
+      toast.success("Club eliminado");
+      refetchMonitored();
+      onAdded();
+    },
+    onError: (err) => toast.error(`Error al eliminar: ${err.message}`),
+  });
+
+  const monitoredIds = new Set(monitoredClubs?.map((c) => c.tenantId) ?? []);
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 500);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Building2 className="w-4 h-4" />
+          Gestionar clubs
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-card border-border max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">Gestionar clubs monitorizados</DialogTitle>
+        </DialogHeader>
+
+        {/* Monitored clubs list */}
+        {monitoredClubs && monitoredClubs.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+              Clubs monitorizados ({monitoredClubs.length})
+            </p>
+            {monitoredClubs.map((club) => (
+              <div
+                key={club.id}
+                className="flex items-center justify-between gap-3 bg-background/60 border border-border rounded-lg px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{club.name}</p>
+                  {club.city && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3" />
+                      {club.city}{club.country ? `, ${club.country}` : ""}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive flex-shrink-0"
+                  onClick={() => removeClubMut.mutate({ id: club.id })}
+                  disabled={removeClubMut.isPending}
+                  title="Eliminar club"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+            Buscar y añadir club
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder="Nombre del club (ej: Rivapadel, Padel Nuestro...)"
+              className="bg-background border-border pl-9"
+            />
+          </div>
+
+          {searching && (
+            <p className="text-xs text-muted-foreground text-center py-2">Buscando...</p>
+          )}
+
+          {!searching && debouncedQuery.length >= 2 && results && results.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              No se encontraron clubs con ese nombre
+            </p>
+          )}
+
+          {results && results.length > 0 && (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {(results as ClubSearchResult[]).map((club) => {
+                const isAdded = monitoredIds.has(club.tenantId);
+                return (
+                  <div
+                    key={club.tenantId}
+                    className="flex items-center justify-between gap-3 bg-background/60 border border-border rounded-lg px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{club.name}</p>
+                      {club.address && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          {club.address}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={isAdded ? "outline" : "default"}
+                      className={`flex-shrink-0 h-7 text-xs ${isAdded ? "border-primary/40 text-primary" : "bg-primary text-primary-foreground"}`}
+                      disabled={isAdded || addClubMut.isPending}
+                      onClick={() =>
+                        addClubMut.mutate({
+                          tenantId: club.tenantId,
+                          tenantUid: club.tenantUid,
+                          name: club.name,
+                          city: club.city,
+                          country: club.country,
+                          imageUrl: club.imageUrl,
+                        })
+                      }
+                    >
+                      {isAdded ? "Añadido" : "Añadir"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── New Watch Form ───────────────────────────────────────────────────────────
 
 const DEFAULT_FORM = {
   name: "",
+  clubId: "",
   dayOfWeek: "3",
   startTimeMin: "18:30",
   startTimeMax: "20:30",
@@ -333,20 +503,34 @@ const DEFAULT_FORM = {
   weeksAhead: "4",
 };
 
-function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => void }) {
+function NewWatchForm({
+  clubs,
+  onCreated,
+}: {
+  clubs: { id: number; name: string; tenantId: string }[];
+  onCreated: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(DEFAULT_FORM.name);
+  const [clubId, setClubId] = useState(clubs[0] ? String(clubs[0].id) : DEFAULT_FORM.clubId);
   const [dayOfWeek, setDayOfWeek] = useState(DEFAULT_FORM.dayOfWeek);
   const [startTimeMin, setStartTimeMin] = useState(DEFAULT_FORM.startTimeMin);
   const [startTimeMax, setStartTimeMax] = useState(DEFAULT_FORM.startTimeMax);
   const [preferredDuration, setPreferredDuration] = useState(DEFAULT_FORM.preferredDuration);
   const [weeksAhead, setWeeksAhead] = useState(DEFAULT_FORM.weeksAhead);
 
-  // Resetear el formulario al cerrarlo
+  // Sync default clubId when clubs load
+  useEffect(() => {
+    if (clubs.length > 0 && !clubId) {
+      setClubId(String(clubs[0].id));
+    }
+  }, [clubs]);
+
   const handleOpenChange = (val: boolean) => {
     setOpen(val);
     if (!val) {
       setName(DEFAULT_FORM.name);
+      setClubId(clubs[0] ? String(clubs[0].id) : DEFAULT_FORM.clubId);
       setDayOfWeek(DEFAULT_FORM.dayOfWeek);
       setStartTimeMin(DEFAULT_FORM.startTimeMin);
       setStartTimeMax(DEFAULT_FORM.startTimeMax);
@@ -367,9 +551,10 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error("El nombre es obligatorio"); return; }
+    if (!clubId) { toast.error("Selecciona un club"); return; }
     if (startTimeMin >= startTimeMax) { toast.error("La hora mínima debe ser anterior a la máxima"); return; }
     createMut.mutate({
-      clubId,
+      clubId: parseInt(clubId),
       name: name.trim(),
       dayOfWeek: parseInt(dayOfWeek),
       startTimeMin,
@@ -383,7 +568,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={clubs.length === 0}>
           <Plus className="w-4 h-4" />
           Nueva vigilancia
         </Button>
@@ -393,12 +578,29 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
           <DialogTitle className="text-foreground">Configurar vigilancia de pistas</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          {/* Club selector */}
+          <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Club</Label>
+            <Select value={clubId} onValueChange={setClubId}>
+              <SelectTrigger className="bg-background border-border">
+                <SelectValue placeholder="Selecciona un club" />
+              </SelectTrigger>
+              <SelectContent>
+                {clubs.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide">Nombre</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Miércoles tarde"
+              placeholder="Ej: Viernes tarde Rivapadel"
               className="bg-background border-border"
               required
             />
@@ -478,7 +680,7 @@ function NewWatchForm({ clubId, onCreated }: { clubId: number; onCreated: () => 
           </div>
           <Button
             type="submit"
-            disabled={createMut.isPending || !name.trim()}
+            disabled={createMut.isPending || !name.trim() || !clubId}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {createMut.isPending ? "Creando..." : "Crear vigilancia"}
@@ -559,6 +761,7 @@ function LiveAvailabilityPanel({
 function WatchConfigCard({
   config,
   tenantId,
+  clubName,
   onDeleted,
   onToggled,
 }: {
@@ -574,6 +777,7 @@ function WatchConfigCard({
     sportId: string;
   };
   tenantId: string;
+  clubName: string;
   onDeleted: () => void;
   onToggled: () => void;
 }) {
@@ -607,6 +811,10 @@ function WatchConfigCard({
             <div className="min-w-0">
               <CardTitle className="text-base text-foreground truncate">{config.name}</CardTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
+                  <Building2 className="w-3 h-3" />
+                  {clubName}
+                </Badge>
                 <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
                   <CalendarIcon className="w-3 h-3" />
                   {DAY_NAMES[config.dayOfWeek]}
@@ -668,15 +876,29 @@ function WatchConfigCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Courts() {
-  const RIVAPADEL_TENANT = "da78a74a-43b3-11e8-8674-52540049669c";
+  const { data: monitoredClubs, refetch: refetchClubs } = trpc.courts.monitoredClubs.useQuery();
 
-  const { data: clubs } = trpc.clubs.list.useQuery();
-  const club = clubs?.[0];
+  // Selected club for the availability preview (defaults to first)
+  const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
+  const activeClub = useMemo(() => {
+    if (!monitoredClubs || monitoredClubs.length === 0) return null;
+    if (selectedClubId) return monitoredClubs.find((c) => c.id === selectedClubId) ?? monitoredClubs[0];
+    return monitoredClubs[0];
+  }, [monitoredClubs, selectedClubId]);
 
   const { data: watchConfigs, refetch: refetchConfigs } = trpc.courts.watchConfigs.useQuery(
-    { clubId: club?.id },
-    { enabled: !!club }
+    {},
+    { staleTime: 30000 }
   );
+
+  // Build a map of clubId → club for quick lookup
+  const clubMap = useMemo(() => {
+    const m = new Map<number, { id: number; name: string; tenantId: string }>();
+    for (const c of monitoredClubs ?? []) {
+      m.set(c.id, { id: c.id, name: c.name, tenantId: c.tenantId });
+    }
+    return m;
+  }, [monitoredClubs]);
 
   const runNowMut = trpc.courts.runNow.useMutation({
     onSuccess: (result) => {
@@ -694,12 +916,10 @@ export default function Courts() {
         const parsed: string[] = JSON.parse(saved);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        // Filter out past dates
         return parsed.filter((d) => fromDateStr(d) >= today).slice(0, MAX_DAYS);
       }
     } catch {}
-    // Default: next 2 Wednesdays
-    return getUpcomingDatesClient(3, 2);
+    return getUpcomingDatesClient(5, 2); // default: próximos 2 viernes
   });
 
   useEffect(() => {
@@ -713,7 +933,7 @@ export default function Courts() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Pistas</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Disponibilidad de pistas de pádel en Rivapadel Sport Club
+            Disponibilidad de pistas de pádel en los clubs monitorizados
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -727,33 +947,83 @@ export default function Courts() {
             <RefreshCw className={`w-4 h-4 ${runNowMut.isPending ? "animate-spin" : ""}`} />
             Comprobar ahora
           </Button>
-          <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
-          {club && <NewWatchForm clubId={club.id} onCreated={() => refetchConfigs()} />}
+          <AddClubDialog onAdded={() => { refetchClubs(); refetchConfigs(); }} />
+          <NewWatchForm
+            clubs={(monitoredClubs ?? []).map((c) => ({ id: c.id, name: c.name, tenantId: c.tenantId }))}
+            onCreated={() => refetchConfigs()}
+          />
         </div>
       </div>
 
-      {/* Selected days availability */}
-      {selectedDates.length === 0 ? (
-        <Card className="bg-card border-border">
-          <CardContent className="py-12 text-center">
-            <CalendarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm font-medium">Ningún día seleccionado</p>
-            <p className="text-muted-foreground/60 text-xs mt-1">
-              Usa el botón "Seleccionar días" para elegir hasta 2 días y ver la disponibilidad
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-4">
-          {selectedDates.map((date) => (
-            <DayAvailabilityCard
-              key={date}
-              tenantId={RIVAPADEL_TENANT}
-              date={date}
-              onRemove={() => setSelectedDates((prev) => prev.filter((d) => d !== date))}
-            />
+      {/* Club selector tabs (if multiple clubs) */}
+      {monitoredClubs && monitoredClubs.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide mr-1">Club:</span>
+          {monitoredClubs.map((club) => (
+            <button
+              key={club.id}
+              onClick={() => setSelectedClubId(club.id)}
+              className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                (activeClub?.id === club.id)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-border text-muted-foreground hover:border-primary/50"
+              }`}
+            >
+              {club.name}
+            </button>
           ))}
         </div>
+      )}
+
+      {/* No clubs configured */}
+      {(!monitoredClubs || monitoredClubs.length === 0) && (
+        <Card className="bg-card border-border">
+          <CardContent className="py-12 text-center">
+            <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm font-medium">Sin clubs configurados</p>
+            <p className="text-muted-foreground/60 text-xs mt-1 mb-4">
+              Añade un club para empezar a monitorizar la disponibilidad de pistas
+            </p>
+            <AddClubDialog onAdded={() => refetchClubs()} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Selected days availability (only shown when there's an active club) */}
+      {activeClub && (
+        <>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Consulta rápida — {activeClub.name}
+            </h2>
+            <DatePicker selectedDates={selectedDates} onChange={setSelectedDates} />
+          </div>
+
+          {selectedDates.length === 0 ? (
+            <Card className="bg-card border-border">
+              <CardContent className="py-12 text-center">
+                <CalendarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm font-medium">Ningún día seleccionado</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">
+                  Usa el botón "Seleccionar días" para elegir hasta 2 días y ver la disponibilidad
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex flex-col lg:flex-row gap-4">
+              {selectedDates.map((date) => (
+                <DayAvailabilityCard
+                  key={date}
+                  tenantId={activeClub.tenantId}
+                  date={date}
+                  startTimeMin="18:30"
+                  startTimeMax="20:30"
+                  onRemove={() => setSelectedDates((prev) => prev.filter((d) => d !== date))}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Watch Configs */}
@@ -764,15 +1034,7 @@ export default function Courts() {
           </h2>
         </div>
 
-        {!club ? (
-          <Card className="bg-card border-border">
-            <CardContent className="py-10 text-center">
-              <p className="text-muted-foreground text-sm">
-                Primero inicializa el club desde el Dashboard
-              </p>
-            </CardContent>
-          </Card>
-        ) : !watchConfigs || watchConfigs.length === 0 ? (
+        {!watchConfigs || watchConfigs.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="py-10 text-center">
               <CalendarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
@@ -783,15 +1045,19 @@ export default function Courts() {
             </CardContent>
           </Card>
         ) : (
-          watchConfigs.map((cfg) => (
-            <WatchConfigCard
-              key={cfg.id}
-              config={cfg}
-              tenantId={RIVAPADEL_TENANT}
-              onDeleted={() => refetchConfigs()}
-              onToggled={() => refetchConfigs()}
-            />
-          ))
+          watchConfigs.map((cfg) => {
+            const club = clubMap.get(cfg.clubId);
+            return (
+              <WatchConfigCard
+                key={cfg.id}
+                config={cfg}
+                tenantId={club?.tenantId ?? ""}
+                clubName={club?.name ?? `Club #${cfg.clubId}`}
+                onDeleted={() => refetchConfigs()}
+                onToggled={() => refetchConfigs()}
+              />
+            );
+          })
         )}
       </div>
     </div>

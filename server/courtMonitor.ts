@@ -671,3 +671,48 @@ export async function autoStartCourtSchedulerIfNeeded(): Promise<void> {
     console.error("[CourtMonitor] Auto-start check failed:", err);
   }
 }
+
+// ─── Búsqueda de clubs en Playtomic ──────────────────────────────────────────
+
+export interface PlaytomicClubResult {
+  tenantId: string;
+  tenantUid: string;
+  name: string;
+  city?: string;
+  country?: string;
+  imageUrl?: string;
+  address?: string;
+}
+
+export async function searchPlaytomicClubs(query: string): Promise<PlaytomicClubResult[]> {
+  try {
+    const resp = await axios.get(`${PLAYTOMIC_API}/tenants`, {
+      params: {
+        playtomic_status: "ACTIVE",
+        with_properties: true,
+        size: 20,
+        tenant_name: query,
+        sport_id: "PADEL",
+      },
+      headers: HEADERS,
+      timeout: 10000,
+    });
+    const data = resp.data;
+    const results: PlaytomicClubResult[] = [];
+    for (const item of Array.isArray(data) ? data : data.content ?? []) {
+      results.push({
+        tenantId: item.tenant_id,
+        tenantUid: item.tenant_uid ?? item.tenant_id,
+        name: item.tenant_name ?? item.name ?? "Club desconocido",
+        city: item.address?.city,
+        country: item.address?.country,
+        imageUrl: item.main_image_url ?? item.profile_image_url,
+        address: [item.address?.street, item.address?.city].filter(Boolean).join(", "),
+      });
+    }
+    return results;
+  } catch (err) {
+    console.error("[CourtMonitor] searchPlaytomicClubs error:", err);
+    return [];
+  }
+}

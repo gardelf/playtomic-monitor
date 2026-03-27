@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE monitored_clubs SET name = 'Rivapadel Sport Club', city = 'Rivas-Vaciamadrid', country = 'España', tenantUid = 'rivapadel' WHERE tenantId = 'da78a74a-43b3-11e8-8674-52540049669c';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute UPDATE monitored_clubs SET name = 'Rivapadel Sport Club', city = 'Rivas-Vaciamadrid', country = 'España', tenantUid = 'rivapadel' WHERE tenantId = 'da78a74a-43b3-11e8-8674-52540049669c';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 71
+}

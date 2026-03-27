@@ -619,3 +619,13 @@ export async function persistSchedulerStop() {
     .set({ isRunning: false, stoppedAt: new Date() })
     .where(eq(courtSchedulerState.id, state.id));
 }
+
+// ─── Aliases para multi-club support (usan las funciones ya definidas arriba) ──
+export const getMonitoredClubs = getAllClubs;
+export const addMonitoredClub = upsertClub;
+
+export async function removeMonitoredClub(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(monitoredClubs).where(eq(monitoredClubs.id, id));
+}

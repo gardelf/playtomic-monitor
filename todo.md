@@ -175,3 +175,23 @@
 - [x] Primera ejecución (lastSlotCount=-1): no alerta, solo registra la línea base
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Bug persistente: Ciclos huérfanos "Ejecutando" y ciclos de 1-3s
+- [ ] Diagnosticar por qué siguen apareciendo ciclos huérfanos con intervalo de 5min
+- [ ] Diagnosticar por qué algunos ciclos terminan en 1-3s (antes tardaban 30-90s)
+- [ ] Corregir causa raíz definitivamente
+- [ ] Tests y checkpoint
+
+## Feature: Soporte para múltiples clubs
+- [x] Revisar schema actual y cómo está hardcodeado el club único
+- [x] Tabla monitored_clubs ya existía con id, tenantId, name, city, country, isActive
+- [x] court_watch_configs ya tenía columna clubId FK
+- [x] El scheduler ya itera por todos los clubs activos y sus vigilancias
+- [x] Backend: searchPlaytomicClubs() en courtMonitor.ts (búsqueda en API de Playtomic)
+- [x] Backend: addMonitoredClub / removeMonitoredClub / getMonitoredClubs en db.ts
+- [x] tRPC: courts.searchClubs, courts.monitoredClubs, courts.addClub, courts.removeClub
+- [x] Frontend: diálogo "Gestionar clubs" con búsqueda en tiempo real + lista de clubs monitorizados
+- [x] Frontend: selector de club al crear una vigilancia (NewWatchForm)
+- [x] Frontend: tabs de selección de club en consulta rápida cuando hay múltiples clubs
+- [x] Tests: 40/40 passing
+- [x] Checkpoint

@@ -31,6 +31,7 @@ import {
   getUpcomingDates,
   isCourtSchedulerRunning,
   runCourtMonitorCycle,
+  searchPlaytomicClubs,
   sendTelegramTestMessage,
   startCourtScheduler,
   stopCourtScheduler,
@@ -43,6 +44,9 @@ import {
   getMonitorRuns,
   getMonitorRunStats,
   updateTelegramContact,
+  addMonitoredClub,
+  removeMonitoredClub,
+  getMonitoredClubs,
 } from "./db";
 
 // ─── Club Router ──────────────────────────────────────────────────────────────
@@ -205,6 +209,33 @@ const monitorRouter = router({
 // ─── Courts Router ───────────────────────────────────────────────────────────
 
 const courtsRouter = router({
+  /** Buscar clubs en Playtomic por nombre */
+  searchClubs: publicProcedure
+    .input(z.object({ query: z.string().min(2) }))
+    .query(({ input }) => searchPlaytomicClubs(input.query)),
+
+  /** Listar clubs monitorizados */
+  monitoredClubs: publicProcedure.query(() => getMonitoredClubs()),
+
+  /** Añadir club a monitorizar */
+  addClub: publicProcedure
+    .input(
+      z.object({
+        tenantId: z.string(),
+        tenantUid: z.string().optional(),
+        name: z.string(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        imageUrl: z.string().optional(),
+      })
+    )
+    .mutation(({ input }) => addMonitoredClub(input)),
+
+  /** Eliminar club monitorizado */
+  removeClub: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(({ input }) => removeMonitoredClub(input.id)),
+
   /** Listar configuraciones de vigilancia de pistas */
   watchConfigs: publicProcedure
     .input(z.object({ clubId: z.number().optional() }))
