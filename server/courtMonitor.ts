@@ -422,9 +422,10 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
     // lastSlotCount = -1 significa primera ejecución (nunca vigilada antes)
 
     const currentSlotCount = allSlotsForConfig.length > 0 ? 1 : 0;
-    const isFirstRun = prevSlotCount === -1;
-    const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
+const prevSlotCount = config.lastSlotCount ?? -1;
 
+const isFirstRun = prevSlotCount === -1;
+const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
     // Actualizar lastSlotCount en la DB para el próximo ciclo
     await updateCourtWatchConfig(config.id, { lastSlotCount: currentSlotCount });
 
