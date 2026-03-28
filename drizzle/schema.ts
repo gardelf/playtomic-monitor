@@ -150,6 +150,8 @@ export const courtWatchConfigs = mysqlTable("court_watch_configs", {
   weeksAhead: int("weeksAhead").default(4).notNull(),
   /** Número de slots encontrados en el último ciclo (para detectar transición 0→>0) */
   lastSlotCount: int("lastSlotCount").default(-1).notNull(),
+  /** Fechas concretas a vigilar (JSON array de strings 'YYYY-MM-DD'). Si es null, usa dayOfWeek+weeksAhead */
+  specificDates: text("specificDates"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

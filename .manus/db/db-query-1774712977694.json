@@ -1,0 +1,14 @@
+{
+  "query": "SELECT openId, name FROM users ORDER BY id ASC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user UZtdrFd36x5de9Y.572ebea53fd4 --database GEs7CeBHSsTEezTeL6en6Y --execute SELECT openId, name FROM users ORDER BY id ASC LIMIT 1;",
+  "rows": [
+    {
+      "openId": "c2kLUkcVujfmvMYq8aWQUt",
+      "name": "Fernando G"
+    }
+  ],
+  "messages": [],
+  "stdout": "openId\tname\nc2kLUkcVujfmvMYq8aWQUt\tFernando G\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

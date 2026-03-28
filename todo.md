@@ -195,3 +195,6 @@
 - [x] Frontend: tabs de selección de club en consulta rápida cuando hay múltiples clubs
 - [x] Tests: 40/40 passing
 - [x] Checkpoint
+
+## Cambios UI (Mar 28)
+- [x] Courts.tsx: reemplazar selector de día de semana + semanas adelante por calendario de selección múltiple de fechas concretas en el formulario de vigilancias

@@ -1,0 +1,1 @@
+ALTER TABLE `court_watch_configs` ADD `specificDates` text;

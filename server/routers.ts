@@ -247,15 +247,24 @@ const courtsRouter = router({
       z.object({
         clubId: z.number(),
         name: z.string().min(1),
-        dayOfWeek: z.number().min(0).max(6),
+        dayOfWeek: z.number().min(0).max(6).optional(),
         startTimeMin: z.string(),
         startTimeMax: z.string(),
         preferredDuration: z.number().optional(),
         sportId: z.string().default("PADEL"),
         weeksAhead: z.number().min(1).max(12).default(4),
+        /** Fechas concretas (YYYY-MM-DD). Si se proveen, ignora dayOfWeek+weeksAhead */
+        specificDates: z.array(z.string()).optional(),
       })
     )
-    .mutation(({ input }) => createCourtWatchConfig(input)),
+    .mutation(({ input }) => {
+      const data = {
+        ...input,
+        dayOfWeek: input.dayOfWeek ?? 3, // fallback miércoles si no se especifica
+        specificDates: input.specificDates ? JSON.stringify(input.specificDates) : undefined,
+      };
+      return createCourtWatchConfig(data);
+    }),
 
   /** Actualizar configuración */
   updateWatch: publicProcedure
@@ -269,11 +278,16 @@ const courtsRouter = router({
         preferredDuration: z.number().nullable().optional(),
         isActive: z.boolean().optional(),
         weeksAhead: z.number().min(1).max(12).optional(),
+        specificDates: z.array(z.string()).nullable().optional(),
       })
     )
     .mutation(({ input }) => {
-      const { id, ...data } = input;
-      return updateCourtWatchConfig(id, data);
+      const { id, specificDates, ...rest } = input;
+      const data: Record<string, unknown> = { ...rest };
+      if (specificDates !== undefined) {
+        data.specificDates = specificDates ? JSON.stringify(specificDates) : null;
+      }
+      return updateCourtWatchConfig(id, data as Parameters<typeof updateCourtWatchConfig>[1]);
     }),
 
   /** Eliminar configuración */

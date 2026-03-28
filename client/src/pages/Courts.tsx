@@ -496,11 +496,9 @@ function AddClubDialog({ onAdded }: { onAdded: () => void }) {
 const DEFAULT_FORM = {
   name: "",
   clubId: "",
-  dayOfWeek: "3",
   startTimeMin: "18:30",
   startTimeMax: "20:30",
   preferredDuration: "any",
-  weeksAhead: "4",
 };
 
 function NewWatchForm({
@@ -513,11 +511,10 @@ function NewWatchForm({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(DEFAULT_FORM.name);
   const [clubId, setClubId] = useState(clubs[0] ? String(clubs[0].id) : DEFAULT_FORM.clubId);
-  const [dayOfWeek, setDayOfWeek] = useState(DEFAULT_FORM.dayOfWeek);
+  const [selectedDates, setSelectedDates] = useState<Date[] | undefined>(undefined);
   const [startTimeMin, setStartTimeMin] = useState(DEFAULT_FORM.startTimeMin);
   const [startTimeMax, setStartTimeMax] = useState(DEFAULT_FORM.startTimeMax);
   const [preferredDuration, setPreferredDuration] = useState(DEFAULT_FORM.preferredDuration);
-  const [weeksAhead, setWeeksAhead] = useState(DEFAULT_FORM.weeksAhead);
 
   // Sync default clubId when clubs load
   useEffect(() => {
@@ -526,17 +523,18 @@ function NewWatchForm({
     }
   }, [clubs]);
 
+  const resetForm = () => {
+    setName(DEFAULT_FORM.name);
+    setClubId(clubs[0] ? String(clubs[0].id) : DEFAULT_FORM.clubId);
+    setSelectedDates(undefined);
+    setStartTimeMin(DEFAULT_FORM.startTimeMin);
+    setStartTimeMax(DEFAULT_FORM.startTimeMax);
+    setPreferredDuration(DEFAULT_FORM.preferredDuration);
+  };
+
   const handleOpenChange = (val: boolean) => {
     setOpen(val);
-    if (!val) {
-      setName(DEFAULT_FORM.name);
-      setClubId(clubs[0] ? String(clubs[0].id) : DEFAULT_FORM.clubId);
-      setDayOfWeek(DEFAULT_FORM.dayOfWeek);
-      setStartTimeMin(DEFAULT_FORM.startTimeMin);
-      setStartTimeMax(DEFAULT_FORM.startTimeMax);
-      setPreferredDuration(DEFAULT_FORM.preferredDuration);
-      setWeeksAhead(DEFAULT_FORM.weeksAhead);
-    }
+    if (!val) resetForm();
   };
 
   const createMut = trpc.courts.createWatch.useMutation({
@@ -552,18 +550,25 @@ function NewWatchForm({
     e.preventDefault();
     if (!name.trim()) { toast.error("El nombre es obligatorio"); return; }
     if (!clubId) { toast.error("Selecciona un club"); return; }
+    if (!selectedDates || selectedDates.length === 0) { toast.error("Selecciona al menos una fecha"); return; }
     if (startTimeMin >= startTimeMax) { toast.error("La hora mínima debe ser anterior a la máxima"); return; }
+    const dateStrings = selectedDates.map(toDateStr).sort();
     createMut.mutate({
       clubId: parseInt(clubId),
       name: name.trim(),
-      dayOfWeek: parseInt(dayOfWeek),
       startTimeMin,
       startTimeMax,
       preferredDuration: preferredDuration !== "any" ? parseInt(preferredDuration) : undefined,
       sportId: "PADEL",
-      weeksAhead: parseInt(weeksAhead),
+      specificDates: dateStrings,
     });
   };
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -573,27 +578,29 @@ function NewWatchForm({
           Nueva vigilancia
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-card border-border max-w-md">
+      <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">Configurar vigilancia de pistas</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           {/* Club selector */}
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground text-xs uppercase tracking-wide">Club</Label>
-            <Select value={clubId} onValueChange={setClubId}>
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue placeholder="Selecciona un club" />
-              </SelectTrigger>
-              <SelectContent>
-                {clubs.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {clubs.length > 1 && (
+            <div className="space-y-1.5">
+              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Club</Label>
+              <Select value={clubId} onValueChange={setClubId}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="Selecciona un club" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clubs.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide">Nombre</Label>
@@ -605,34 +612,58 @@ function NewWatchForm({
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Día</Label>
-              <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAY_NAMES.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+          {/* Calendario multi-fecha */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Fechas a vigilar</Label>
+              {selectedDates && selectedDates.length > 0 && (
+                <span className="text-xs text-primary font-medium">
+                  {selectedDates.length} {selectedDates.length === 1 ? "fecha" : "fechas"} seleccionadas
+                </span>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wide">Semanas adelante</Label>
-              <Select value={weeksAhead} onValueChange={setWeeksAhead}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 6, 8, 12].map((w) => (
-                    <SelectItem key={w} value={String(w)}>{w} semanas</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex justify-center rounded-xl border border-border bg-background p-1">
+              <Calendar
+                mode="multiple"
+                selected={selectedDates}
+                onSelect={setSelectedDates}
+                disabled={{ before: today }}
+                className="text-foreground"
+                classNames={{
+                  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                  day_today: "bg-accent text-accent-foreground",
+                }}
+              />
             </div>
+            {selectedDates && selectedDates.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {selectedDates
+                  .map(toDateStr)
+                  .sort()
+                  .map((d) => (
+                    <span
+                      key={d}
+                      className="inline-flex items-center gap-1 text-xs bg-primary/15 text-primary border border-primary/25 rounded-md px-2 py-0.5"
+                    >
+                      {formatDateShort(d)}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedDates((prev) =>
+                            prev?.filter((x) => toDateStr(x) !== d)
+                          )
+                        }
+                        className="hover:text-destructive transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+            )}
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-muted-foreground text-xs uppercase tracking-wide">Hora desde</Label>
@@ -680,7 +711,7 @@ function NewWatchForm({
           </div>
           <Button
             type="submit"
-            disabled={createMut.isPending || !name.trim() || !clubId}
+            disabled={createMut.isPending || !name.trim() || !clubId || !selectedDates || selectedDates.length === 0}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {createMut.isPending ? "Creando..." : "Crear vigilancia"}
