@@ -402,7 +402,7 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
         });
 
         for (const slot of matchingSlots) {
-          totalSlotsFound++;
+         
           allSlotsForConfig.push({
             date: dateStr,
             time: slot.start_time.substring(0, 5),
@@ -422,6 +422,7 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
     // lastSlotCount = -1 significa primera ejecución (nunca vigilada antes)
 
     const currentSlotCount = allSlotsForConfig.length > 0 ? 1 : 0;
+totalSlotsFound += currentSlotCount;
 const prevSlotCount = config.lastSlotCount ?? -1;
 
 const isFirstRun = prevSlotCount === -1;
