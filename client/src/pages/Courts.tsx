@@ -735,9 +735,13 @@ function LiveAvailabilityPanel({
     startTimeMax: string;
     preferredDuration?: number | null;
     weeksAhead: number;
+    specificDates?: string | null;
   };
 }) {
-  const dates = getUpcomingDatesClient(config.dayOfWeek, config.weeksAhead);
+  const today = new Date().toISOString().slice(0, 10);
+  const dates = config.specificDates
+    ? (JSON.parse(config.specificDates) as string[]).filter((d) => d >= today)
+    : getUpcomingDatesClient(config.dayOfWeek, config.weeksAhead);
   const [selectedDate, setSelectedDate] = useState(dates[0] ?? "");
 
   const { data, isLoading, refetch } = trpc.courts.checkDate.useQuery(
@@ -806,6 +810,7 @@ function WatchConfigCard({
     isActive: boolean;
     weeksAhead: number;
     sportId: string;
+    specificDates?: string | null;
   };
   tenantId: string;
   clubName: string;
@@ -846,10 +851,22 @@ function WatchConfigCard({
                   <Building2 className="w-3 h-3" />
                   {clubName}
                 </Badge>
-                <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
-                  <CalendarIcon className="w-3 h-3" />
-                  {DAY_NAMES[config.dayOfWeek]}
-                </Badge>
+                {config.specificDates ? (
+                  <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
+                    <CalendarIcon className="w-3 h-3" />
+                    {(JSON.parse(config.specificDates) as string[]).length} fecha{(JSON.parse(config.specificDates) as string[]).length !== 1 ? "s" : ""}
+                  </Badge>
+                ) : (
+                  <>
+                    <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
+                      <CalendarIcon className="w-3 h-3" />
+                      {DAY_NAMES[config.dayOfWeek]}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs border-border text-muted-foreground">
+                      {config.weeksAhead} sem.
+                    </Badge>
+                  </>
+                )}
                 <Badge variant="outline" className="text-xs border-border text-muted-foreground gap-1">
                   <Clock className="w-3 h-3" />
                   {config.startTimeMin}–{config.startTimeMax}
@@ -860,9 +877,6 @@ function WatchConfigCard({
                     {config.preferredDuration}min
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs border-border text-muted-foreground">
-                  {config.weeksAhead} sem.
-                </Badge>
               </div>
             </div>
           </div>

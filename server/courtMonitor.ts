@@ -379,8 +379,10 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
     }
     const resources = resourceCache[club.tenantId]!;
 
-    // Get upcoming dates for this day of week
-    const dates = getUpcomingDates(config.dayOfWeek, config.weeksAhead);
+    // Get dates to check: use specificDates if set, otherwise fall back to dayOfWeek+weeksAhead
+    const dates: string[] = config.specificDates
+      ? (JSON.parse(config.specificDates) as string[]).filter((d) => d >= new Date().toISOString().slice(0, 10))
+      : getUpcomingDates(config.dayOfWeek, config.weeksAhead);
     // Todos los slots encontrados en este ciclo para esta vigilancia
     const allSlotsForConfig: CourtSlotResult[] = [];
 
@@ -443,7 +445,12 @@ const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotC
     // Send alerts for new slots
     if (newSlotsForConfig.length > 0) {
       const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-      const dayName = dayNames[config.dayOfWeek] ?? "día";
+      const dayName = config.specificDates
+        ? (JSON.parse(config.specificDates) as string[]).map((d) => {
+            const [y, m, day] = d.split("-");
+            return new Date(parseInt(y!), parseInt(m!) - 1, parseInt(day!)).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+          }).join(", ")
+        : (dayNames[config.dayOfWeek] ?? "día");
 
       // Group new slots by date for cleaner message
       const byDate = new Map<string, CourtSlotResult[]>();
@@ -507,7 +514,9 @@ const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotC
   // Collect all dates checked
   const allDatesChecked: string[] = [];
   for (const config of configs) {
-    const dates = getUpcomingDates(config.dayOfWeek, config.weeksAhead);
+    const dates: string[] = config.specificDates
+      ? (JSON.parse(config.specificDates) as string[]).filter((d) => d >= new Date().toISOString().slice(0, 10))
+      : getUpcomingDates(config.dayOfWeek, config.weeksAhead);
     for (const d of dates) {
       if (!allDatesChecked.includes(d)) allDatesChecked.push(d);
     }
