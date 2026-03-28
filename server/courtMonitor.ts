@@ -421,7 +421,7 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
     // Lógica de alerta: solo cuando se pasa de 0 slots a >0 (transición 0→>0)
     // lastSlotCount = -1 significa primera ejecución (nunca vigilada antes)
     const currentSlotCount = allSlotsForConfig.length;
-    const prevSlotCount = config.lastSlotCount ?? -1;
+    const currentSlotCount = allSlotsForConfig.length > 0 ? 1 : 0;
     const isFirstRun = prevSlotCount === -1;
     const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
 
