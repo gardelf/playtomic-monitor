@@ -5,7 +5,7 @@
  * - Envía alertas a TODOS los contactos Telegram activos con enlace directo
  */
 
-import axios from "axios";
+import axios from "axios"; 
 import { and, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "./db";
 import {
@@ -401,30 +401,33 @@ export async function runCourtMonitorCycle(triggeredBy: "scheduler" | "manual" =
           return inRange && durationOk;
         });
 
-        for (const slot of matchingSlots) {
-          totalSlotsFound++;
-          allSlotsForConfig.push({
-            date: dateStr,
-            time: slot.start_time.substring(0, 5),
-            duration: slot.duration,
-            courtName: resource.name,
-            resourceId: courtAvail.resource_id,
-            courtType: resource.properties?.resource_type,
-            courtFeature: resource.properties?.resource_feature,
-            price: slot.price,
-            isNew: false,
-          });
-        }
+for (const slot of matchingSlots) {
+  totalSlotsFound++;
+
+  allSlotsForConfig.push({
+    date: dateStr,
+    time: slot.start_time.substring(0, 5),
+    duration: slot.duration,
+    courtName: resource.name,
+    resourceId: courtAvail.resource_id,
+    courtType: resource.properties?.resource_type,
+    courtFeature: resource.properties?.resource_feature,
+    price: slot.price,
+    isNew: false,
+  });
+}
       }
     }
 
     // Lógica de alerta: solo cuando se pasa de 0 slots a >0 (transición 0→>0)
     // lastSlotCount = -1 significa primera ejecución (nunca vigilada antes)
-    const currentSlotCount = allSlotsForConfig.length;
-    const prevSlotCount = config.lastSlotCount ?? -1;
-    const isFirstRun = prevSlotCount === -1;
-    const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
 
+    const currentSlotCount = allSlotsForConfig.length;
+
+const prevSlotCount = config.lastSlotCount ?? -1;
+
+const isFirstRun = prevSlotCount === -1;
+const transitionToAvailable = !isFirstRun && prevSlotCount === 0 && currentSlotCount > 0;
     // Actualizar lastSlotCount en la DB para el próximo ciclo
     await updateCourtWatchConfig(config.id, { lastSlotCount: currentSlotCount });
 
