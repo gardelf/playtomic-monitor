@@ -3,8 +3,13 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+
+// import.meta.dirname is only available in Node 21.2+; use fileURLToPath for compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname_compat = path.dirname(__filename);
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -26,7 +31,7 @@ export async function setupVite(app: Express, server: Server) {
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
+        __dirname_compat,
         "../..",
         "client",
         "index.html"
@@ -53,8 +58,8 @@ export function serveStatic(app: Express) {
   //   server/public -> dist/public, por lo que import.meta.dirname = dist/ -> dist/public
   const distPath =
     process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "server", "public")
-      : path.resolve(import.meta.dirname, "public");
+      ? path.resolve(__dirname_compat, "../..", "server", "public")
+      : path.resolve(__dirname_compat, "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
